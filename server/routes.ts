@@ -16,6 +16,7 @@ import { googleImageService } from "./googleImageService";
 import { pixabayImageService } from "./pixabayImageService";
 import { EmailService } from "./emailService";
 import { AndroidNotificationService } from "./androidNotificationService";
+import { OneSignalServerService } from "./oneSignalService";
 import crypto from 'crypto';
 import webpush from 'web-push';
 import admin from 'firebase-admin';
@@ -8285,12 +8286,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: 'userId and subscription are required' 
         });
       }
+
+      console.log('💾 Storing push subscription for user:', userId);
+      console.log('📱 Subscription endpoint:', subscription.endpoint);
       
-      console.log('Push subscription received for user:', userId);
-      res.json({ success: true });
+      // Store subscription using the push notification service
+      const success = await PushNotificationService.subscribeToPushNotifications(userId, subscription);
+      
+      if (success) {
+        console.log('✅ Push subscription stored successfully');
+        res.json({ success: true, message: 'Successfully subscribed to push notifications' });
+      } else {
+        console.log('❌ Failed to store push subscription');
+        res.status(500).json({ success: false, error: 'Failed to store subscription' });
+      }
     } catch (error) {
       console.error('Error storing push subscription:', error);
-      res.status(500).json({ error: 'Failed to store subscription' });
+      res.status(500).json({ error: 'Failed to store subscription', details: error.message });
     }
   });
 
@@ -8655,6 +8667,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to send FCM test notification',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // OneSignal Push Notification Routes
+  app.post("/api/onesignal/send", async (req, res) => {
+    try {
+      const { userId, title, message, data } = req.body;
+
+      if (!userId || !message) {
+        return res.status(400).json({ error: "userId and message are required" });
+      }
+
+      const success = await OneSignalServerService.sendToUser(
+        userId.toString(),
+        title || "Siraha Bazaar",
+        message,
+        data
+      );
+
+      res.json({ 
+        success,
+        message: success ? "Notification sent successfully" : "Failed to send notification"
+      });
+    } catch (error) {
+      console.error("OneSignal send error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal notification" });
+    }
+  });
+
+  app.post("/api/onesignal/send-to-all", async (req, res) => {
+    try {
+      const { title, message, data } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      const success = await OneSignalServerService.sendToAll(
+        title || "Siraha Bazaar",
+        message,
+        data
+      );
+
+      res.json({ 
+        success,
+        message: success ? "Broadcast notification sent successfully" : "Failed to send broadcast"
+      });
+    } catch (error) {
+      console.error("OneSignal broadcast error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal broadcast" });
+    }
+  });
+
+  app.post("/api/onesignal/send-order-notification", async (req, res) => {
+    try {
+      const { userId, orderId, status } = req.body;
+
+      if (!userId || !orderId || !status) {
+        return res.status(400).json({ error: "userId, orderId, and status are required" });
+      }
+
+      const success = await OneSignalServerService.sendOrderNotification(
+        userId.toString(),
+        parseInt(orderId),
+        status
+      );
+
+      res.json({ 
+        success,
+        message: success ? "Order notification sent successfully" : "Failed to send order notification"
+      });
+    } catch (error) {
+      console.error("OneSignal order notification error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal order notification" });
+    }
+  });
+
+  app.post("/api/onesignal/send-delivery-assignment", async (req, res) => {
+    try {
+      const { deliveryPartnerId, orderId, pickupAddress, deliveryAddress, earnings } = req.body;
+
+      if (!deliveryPartnerId || !orderId || !pickupAddress || !deliveryAddress || !earnings) {
+        return res.status(400).json({ 
+          error: "deliveryPartnerId, orderId, pickupAddress, deliveryAddress, and earnings are required" 
+        });
+      }
+
+      const success = await OneSignalServerService.sendDeliveryAssignment(
+        deliveryPartnerId.toString(),
+        parseInt(orderId),
+        pickupAddress,
+        deliveryAddress,
+        parseFloat(earnings)
+      );
+
+      res.json({ 
+        success,
+        message: success ? "Delivery assignment notification sent successfully" : "Failed to send delivery assignment"
+      });
+    } catch (error) {
+      console.error("OneSignal delivery assignment error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal delivery assignment" });
+    }
+  });
+
+  app.get("/api/onesignal/status", async (req, res) => {
+    try {
+      const isConfigured = OneSignalServerService.isConfigured();
+      
+      res.json({
+        configured: isConfigured,
+        appId: process.env.ONESIGNAL_APP_ID ? 'Configured' : 'Missing',
+        apiKey: process.env.ONESIGNAL_API_KEY ? 'Configured' : 'Missing',
+        status: isConfigured ? 'Ready' : 'Not configured'
+      });
+    } catch (error) {
+      console.error("OneSignal status error:", error);
+      res.status(500).json({ error: "Failed to get OneSignal status" });
+    }
+  });
+
+  app.post("/api/onesignal/test", async (req, res) => {
+    try {
+      const { title, message } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      const success = await OneSignalServerService.sendToAll(
+        title || "Test Notification",
+        message
+      );
+
+      res.json({ 
+        success,
+        message: success ? "Test notification sent successfully" : "Failed to send test notification"
+      });
+    } catch (error) {
+      console.error("OneSignal test error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal test notification" });
     }
   });
 

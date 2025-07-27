@@ -17,6 +17,7 @@ import MobileNotificationBar from "@/components/MobileNotificationBar";
 import { AndroidBridge } from "@/lib/androidBridge";
 import { useEffect } from "react";
 import { initializeFirebaseNotifications, requestNotificationPermission } from "@/lib/firebaseNotifications";
+import { OneSignalService } from "@/lib/oneSignalService";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Homepage from "@/pages/Homepage";
@@ -73,6 +74,7 @@ import NotificationBanner from "@/components/NotificationBanner";
 import FlashSales from "@/pages/FlashSales";
 import SpecialOffers from "@/pages/SpecialOffers";
 import NotificationTest from "@/pages/NotificationTest";
+import PushNotificationTest from "@/pages/PushNotificationTest";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import PWATest from "@/pages/PWATest";
 import SoundSettingsPage from "@/pages/SoundSettingsPage";
@@ -82,6 +84,7 @@ import ProtocolHandler from "@/pages/ProtocolHandler";
 import ShareTarget from "@/pages/ShareTarget";
 import PWAFeaturesShowcase from "@/pages/PWAFeaturesShowcase";
 import FCMTest from "@/pages/FCMTest";
+import OneSignalTest from "@/pages/OneSignalTest";
 
 function AppRouter() {
   const { mode } = useAppMode();
@@ -124,10 +127,12 @@ function AppRouter() {
         <Route path="/special-offers" component={SpecialOffers} />
         <Route path="/food-offers" component={SpecialOffers} />
         <Route path="/notification-test" component={NotificationTest} />
+        <Route path="/push-notification-test" component={PushNotificationTest} />
 
         {/* PWA Advanced Features */}
         <Route path="/pwa-features" component={PWAFeaturesShowcase} />
         <Route path="/fcm-test" component={FCMTest} />
+        <Route path="/onesignal-test" component={OneSignalTest} />
         <Route path="/sound-test" component={SoundEffectsTest} />
         <Route path="/file-handler" component={FileHandler} />
         <Route path="/protocol-handler" component={ProtocolHandler} />
@@ -173,10 +178,13 @@ function AppRouter() {
 }
 
 function App() {
-  // Initialize Android bridge on app startup
+  // Initialize Android bridge and OneSignal on app startup
   useEffect(() => {
     AndroidBridge.initialize();
     console.log('React app mounted successfully');
+    
+    // Initialize OneSignal for push notifications
+    OneSignalService.initialize();
   }, []);
 
   // Initialize FCM when app loads (like in YouTube tutorials)

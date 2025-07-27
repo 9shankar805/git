@@ -43,17 +43,51 @@ export class PushNotificationService {
     // Configure web-push with VAPID keys
     const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
     const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
-    const contact = process.env.VAPID_CONTACT || 'mailto:admin@sirahaBazaar.com';
+    const contact = process.env.VAPID_CONTACT || 'mailto:sirahabazzar@gmail.com';
 
     if (publicVapidKey && privateVapidKey && privateVapidKey !== '<set by replit>') {
       try {
+        // Validate VAPID key format before setting
+        if (!this.isValidVapidKey(publicVapidKey, privateVapidKey)) {
+          console.warn('VAPID keys format validation failed');
+          return;
+        }
+
         webpush.setVapidDetails(contact, publicVapidKey, privateVapidKey);
-        console.log('Push notification service initialized');
+        console.log('✅ Push notification service initialized with VAPID keys');
       } catch (error) {
         console.warn('VAPID keys configuration failed:', error);
+        console.warn('Note: VAPID keys must be properly formatted base64url strings');
       }
     } else {
       console.warn('VAPID keys not configured. Push notifications will not work.');
+    }
+  }
+
+  private static isValidVapidKey(publicKey: string, privateKey: string): boolean {
+    try {
+      // VAPID public key should be base64url encoded and about 87-88 characters
+      if (!publicKey || publicKey.length < 80 || publicKey.length > 90) {
+        console.warn(`Invalid VAPID public key length: ${publicKey?.length || 0}. Expected 87-88 characters.`);
+        return false;
+      }
+
+      // VAPID private key should be base64url encoded and about 43-44 characters  
+      if (!privateKey || privateKey.length < 40 || privateKey.length > 50) {
+        console.warn(`Invalid VAPID private key length: ${privateKey?.length || 0}. Expected 43-44 characters.`);
+        return false;
+      }
+
+      // Check if they start with expected prefixes (public key often starts with 'B')
+      if (!publicKey.startsWith('B')) {
+        console.warn('VAPID public key should start with "B"');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('VAPID key validation error:', error);
+      return false;
     }
   }
 

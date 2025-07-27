@@ -16,7 +16,7 @@ import ModeSwiper from "@/components/ModeSwiper";
 import MobileNotificationBar from "@/components/MobileNotificationBar";
 import { AndroidBridge } from "@/lib/androidBridge";
 import { useEffect } from "react";
-import FirebaseNotificationService from "@/lib/firebaseNotifications";
+import { FirebaseNotificationService } from "@/lib/firebaseNotifications";
 // Firebase Cloud Messaging is initialized automatically via firebaseNotifications.ts
 
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -191,20 +191,19 @@ function App() {
       
       try {
         // First initialize Firebase
-        await initializeFirebaseNotifications();
+        await FirebaseNotificationService.initialize();
         
         // Check if notification permission is already granted
         if (Notification.permission === 'granted') {
           console.log('✅ Notification permission already granted - FCM ready!');
         } else if (Notification.permission === 'default') {
           console.log('🔔 Requesting notification permission for FCM token...');
-          const granted = await requestNotificationPermission();
+          const granted = await FirebaseNotificationService.requestPermission();
           if (granted) {
             console.log('🎉 Notification permission granted! Getting FCM token...');
             // Try to get the token now that permission is granted
             try {
-              const { getFirebaseToken } = await import('@/lib/firebaseNotifications');
-              const token = await getFirebaseToken();
+              const token = await FirebaseNotificationService.getDeviceToken();
               if (token) {
                 console.log('🎯 SUCCESS: FCM Token generated after permission grant!');
               }

@@ -27,6 +27,15 @@ export class FirebaseNotificationService {
     if (this.initialized) return true;
 
     try {
+      // Debug Firebase config
+      console.log('🔧 Firebase Config Debug:', {
+        hasApiKey: !!firebaseConfig.apiKey,
+        hasAuthDomain: !!firebaseConfig.authDomain,
+        hasProjectId: !!firebaseConfig.projectId,
+        apiKeyPrefix: firebaseConfig.apiKey?.substring(0, 10) + '...',
+        projectId: firebaseConfig.projectId
+      });
+
       // Check if browser supports push notifications
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('Push messaging is not supported');
@@ -35,16 +44,22 @@ export class FirebaseNotificationService {
 
       // Initialize Firebase app
       this.app = initializeApp(firebaseConfig);
+      console.log('✅ Firebase app initialized');
+      
       this.messaging = getMessaging(this.app);
+      console.log('✅ Firebase messaging service initialized');
 
       // Register service worker
       await this.registerServiceWorker();
 
       this.initialized = true;
-      console.log('✅ Firebase Cloud Messaging initialized');
+      console.log('✅ Firebase Cloud Messaging fully initialized');
       return true;
     } catch (error) {
-      console.error('❌ Firebase initialization failed:', error);
+      console.error('❌ Firebase initialization failed with detailed error:', error);
+      console.error('Error name:', (error as any)?.name);
+      console.error('Error message:', (error as any)?.message);
+      console.error('Error stack:', (error as any)?.stack);
       return false;
     }
   }

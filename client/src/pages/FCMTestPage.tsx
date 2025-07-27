@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import FirebaseNotificationService from '@/lib/firebaseNotifications';
+import { FirebaseNotificationService } from '@/lib/firebaseNotifications';
 import { Bell, Send, Settings, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 export default function FCMTestPage() {

@@ -28,20 +28,20 @@ messaging.onBackgroundMessage(function(payload) {
   const notificationTitle = payload.notification?.title || 'Siraha Bazaar';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
-    icon: payload.notification?.icon || '/icon-192x192.png',
-    badge: '/icon-72x72.png',
+    icon: payload.notification?.icon || '/assets/icon2.png',
+    badge: '/assets/icon2.png',
     vibrate: [200, 100, 200],
     requireInteraction: true,
     actions: [
       {
         action: 'open',
         title: 'Open App',
-        icon: '/icon-72x72.png'
+        icon: '/assets/icon2.png'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/icon-72x72.png'
+        icon: '/assets/icon2.png'
       }
     ],
     data: payload.data || {}
@@ -84,8 +84,7 @@ self.addEventListener('notificationclick', function(event) {
 const CACHE_NAME = 'siraha-bazaar-fcm-v1';
 const urlsToCache = [
   '/',
-  '/icon-192x192.png',
-  '/icon-72x72.png',
+  '/assets/icon2.png',
   '/manifest.json'
 ];
 

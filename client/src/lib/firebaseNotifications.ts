@@ -151,8 +151,8 @@ export class FirebaseNotificationService {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body,
-        icon: icon || '/icon-192x192.png',
-        badge: '/icon-72x72.png',
+        icon: icon || '/assets/icon2.png',
+        badge: '/assets/icon2.png',
         requireInteraction: true,
       });
     }

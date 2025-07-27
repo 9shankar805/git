@@ -67,7 +67,7 @@ export class FirebaseAdminService {
         notification: {
           title,
           body,
-          icon: '/icon-192x192.png',
+          icon: '/assets/icon2.png',
         },
         data: data || {},
         token,
@@ -76,15 +76,15 @@ export class FirebaseAdminService {
             'TTL': '86400', // 24 hours
           },
           notification: {
-            icon: '/icon-192x192.png',
-            badge: '/icon-72x72.png',
+            icon: '/assets/icon2.png',
+            badge: '/assets/icon2.png',
             vibrate: [200, 100, 200],
             requireInteraction: true,
             actions: [
               {
                 action: 'open',
                 title: 'Open App',
-                icon: '/icon-72x72.png'
+                icon: '/assets/icon2.png'
               }
             ]
           }
@@ -117,7 +117,7 @@ export class FirebaseAdminService {
         notification: {
           title,
           body,
-          icon: '/icon-192x192.png',
+          icon: '/assets/icon2.png',
         },
         data: data || {},
         tokens,
@@ -126,8 +126,8 @@ export class FirebaseAdminService {
             'TTL': '86400',
           },
           notification: {
-            icon: '/icon-192x192.png',
-            badge: '/icon-72x72.png',
+            icon: '/assets/icon2.png',
+            badge: '/assets/icon2.png',
             vibrate: [200, 100, 200],
             requireInteraction: true,
           }

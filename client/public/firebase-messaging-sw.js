@@ -81,7 +81,7 @@ self.addEventListener('notificationclick', function(event) {
 });
 
 // Service Worker cache management
-const CACHE_NAME = 'siraha-bazaar-fcm-v1';
+const CACHE_NAME = 'siraha-bazaar-fcm-v1.1';
 const urlsToCache = [
   '/',
   '/assets/icon2.png',

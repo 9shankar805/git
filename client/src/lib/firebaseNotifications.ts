@@ -103,20 +103,36 @@ export class FirebaseNotificationService {
         if (!initSuccess) return null;
       }
 
+      // Check notification permission first
+      if (Notification.permission !== 'granted') {
+        console.error('❌ FCM Token generation failed: Notification permission not granted');
+        throw new Error('Notification permission required for FCM token generation');
+      }
+
+      console.log('📥 Step 3: Generating FCM token with VAPID key...');
+      
       const token = await getToken(this.messaging, {
         vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
       });
 
       if (token) {
         this.currentToken = token;
-        console.log('✅ FCM Device Token:', token);
+        console.log('✅ FCM Device Token Generated Successfully:', token.substring(0, 20) + '...');
+        console.log('🔗 Full Token (copy this for Firebase Console testing):', token);
         return token;
       } else {
-        console.log('No registration token available');
-        return null;
+        console.error('❌ No FCM registration token available - check Firebase project configuration');
+        throw new Error('FCM token generation returned null - possible Firebase project configuration issue');
       }
     } catch (error) {
-      console.error('An error occurred while retrieving token:', error);
+      console.error('❌ FCM Token generation failed:', error);
+      
+      // Provide specific error guidance
+      if (error.code === 'messaging/token-subscribe-failed') {
+        console.error('🔧 Firebase project may require authentication. Check Firebase Console settings.');
+      }
+      
       return null;
     }
   }

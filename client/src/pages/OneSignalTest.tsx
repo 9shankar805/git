@@ -32,17 +32,38 @@ export default function OneSignalTest() {
 
     checkConfig();
     
-    // Try to get OneSignal user ID
-    const getOneSignalId = async () => {
+    // Try to get OneSignal user ID with retry mechanism for mobile
+    const getOneSignalId = async (attempt = 1) => {
       try {
+        // For mobile, we need to wait longer for OneSignal to initialize
         const id = await OneSignalService.getUserId();
-        setOneSignalUserId(id);
+        if (id) {
+          setOneSignalUserId(id);
+          console.log(`OneSignal User ID found on attempt ${attempt}:`, id);
+        } else if (attempt < 5) {
+          // Retry up to 5 times, especially important for mobile
+          setTimeout(() => getOneSignalId(attempt + 1), 2000);
+        } else {
+          console.log('OneSignal User ID not available after 5 attempts');
+          // Check if OneSignal is available globally (from HTML script)
+          if (window.OneSignal) {
+            window.OneSignal.getUserId(function(userId: string | null) {
+              if (userId) {
+                setOneSignalUserId(userId);
+                console.log('OneSignal User ID found via window.OneSignal:', userId);
+              }
+            });
+          }
+        }
       } catch (error) {
-        console.error('Failed to get OneSignal user ID:', error);
+        console.error(`Failed to get OneSignal user ID on attempt ${attempt}:`, error);
+        if (attempt < 5) {
+          setTimeout(() => getOneSignalId(attempt + 1), 2000);
+        }
       }
     };
 
-    setTimeout(getOneSignalId, 3000); // Wait for OneSignal to initialize
+    setTimeout(() => getOneSignalId(1), 3000); // Wait for OneSignal to initialize
   }, []);
 
   const handleSendToUser = async () => {
@@ -75,10 +96,51 @@ export default function OneSignalTest() {
     }
   };
 
+  const handleSubscribe = async () => {
+    try {
+      if (window.OneSignal) {
+        await window.OneSignal.showSlidedownPrompt();
+        // Also try the direct method
+        await window.OneSignal.registerForPushNotifications();
+        
+        toast({
+          title: "Subscription Requested",
+          description: "Please allow notifications when prompted by your browser",
+        });
+        
+        // Retry getting user ID after subscription attempt
+        setTimeout(() => {
+          window.OneSignal.getUserId(function(userId: string | null) {
+            if (userId) {
+              setOneSignalUserId(userId);
+              toast({
+                title: "Success!",
+                description: "Successfully subscribed to notifications",
+              });
+            }
+          });
+        }, 2000);
+      } else {
+        toast({
+          title: "Error",
+          description: "OneSignal not initialized yet. Please wait and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to request subscription. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSendToAll = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/onesignal/send-to-all', {
+      const response = await fetch('/api/onesignal/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, message }),
@@ -303,11 +365,20 @@ export default function OneSignalTest() {
               </Badge>
             </div>
 
-            {Notification.permission !== 'granted' && (
-              <Button onClick={requestPermission} className="w-full">
-                Request Notification Permission
-              </Button>
-            )}
+            <div className="flex flex-col gap-2">
+              {Notification.permission !== 'granted' && (
+                <Button onClick={requestPermission} className="w-full">
+                  Request Notification Permission
+                </Button>
+              )}
+              
+              {!oneSignalUserId && (
+                <Button onClick={handleSubscribe} variant="outline" className="w-full">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Subscribe to OneSignal
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 

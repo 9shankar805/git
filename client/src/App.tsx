@@ -17,7 +17,7 @@ import MobileNotificationBar from "@/components/MobileNotificationBar";
 import { AndroidBridge } from "@/lib/androidBridge";
 import { useEffect } from "react";
 import { initializeFirebaseNotifications, requestNotificationPermission } from "@/lib/firebaseNotifications";
-import { OneSignalService } from "@/lib/oneSignalService";
+// OneSignal is initialized via HTML script tag to avoid React conflicts
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Homepage from "@/pages/Homepage";
@@ -178,13 +178,10 @@ function AppRouter() {
 }
 
 function App() {
-  // Initialize Android bridge and OneSignal on app startup
+  // Initialize Android bridge on app startup
   useEffect(() => {
     AndroidBridge.initialize();
     console.log('React app mounted successfully');
-    
-    // Initialize OneSignal for push notifications
-    OneSignalService.initialize();
   }, []);
 
   // Initialize FCM when app loads (like in YouTube tutorials)

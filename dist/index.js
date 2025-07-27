@@ -6642,16 +6642,41 @@ var PushNotificationService = class {
   static initialize() {
     const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
     const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
-    const contact = process.env.VAPID_CONTACT || "mailto:admin@sirahaBazaar.com";
+    const contact = process.env.VAPID_CONTACT || "mailto:sirahabazzar@gmail.com";
     if (publicVapidKey && privateVapidKey && privateVapidKey !== "<set by replit>") {
       try {
+        if (!this.isValidVapidKey(publicVapidKey, privateVapidKey)) {
+          console.warn("VAPID keys format validation failed");
+          return;
+        }
         webpush.setVapidDetails(contact, publicVapidKey, privateVapidKey);
-        console.log("Push notification service initialized");
+        console.log("\u2705 Push notification service initialized with VAPID keys");
       } catch (error) {
         console.warn("VAPID keys configuration failed:", error);
+        console.warn("Note: VAPID keys must be properly formatted base64url strings");
       }
     } else {
       console.warn("VAPID keys not configured. Push notifications will not work.");
+    }
+  }
+  static isValidVapidKey(publicKey, privateKey) {
+    try {
+      if (!publicKey || publicKey.length < 80 || publicKey.length > 90) {
+        console.warn(`Invalid VAPID public key length: ${publicKey?.length || 0}. Expected 87-88 characters.`);
+        return false;
+      }
+      if (!privateKey || privateKey.length < 40 || privateKey.length > 50) {
+        console.warn(`Invalid VAPID private key length: ${privateKey?.length || 0}. Expected 43-44 characters.`);
+        return false;
+      }
+      if (!publicKey.startsWith("B")) {
+        console.warn('VAPID public key should start with "B"');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn("VAPID key validation error:", error);
+      return false;
     }
   }
   static isConfigured() {
@@ -7448,6 +7473,146 @@ var EmailService = class {
 
 // server/routes.ts
 init_androidNotificationService();
+
+// server/oneSignalService.ts
+import * as OneSignal from "onesignal-node";
+var OneSignalServerService = class {
+  static client;
+  static appId;
+  static apiKey;
+  static initialize() {
+    this.appId = process.env.ONESIGNAL_APP_ID || "6ae02b1b-ee75-4129-8f89-e481284a7b85";
+    this.apiKey = process.env.ONESIGNAL_API_KEY || "";
+    if (!this.appId || !this.apiKey) {
+      console.warn("OneSignal credentials not configured. Push notifications will not work.");
+      return;
+    }
+    try {
+      this.client = new OneSignal.Client(this.appId, this.apiKey);
+      console.log("\u2705 OneSignal server service initialized");
+    } catch (error) {
+      console.error("OneSignal initialization failed:", error);
+    }
+  }
+  static isConfigured() {
+    return !!(this.appId && this.apiKey && this.client);
+  }
+  // Send notification to specific user
+  static async sendToUser(userId, title, message, data) {
+    if (!this.isConfigured()) {
+      console.warn("OneSignal not configured");
+      return false;
+    }
+    try {
+      const notification = {
+        contents: { en: message },
+        headings: { en: title },
+        include_external_user_ids: [userId.toString()],
+        data: data || {},
+        web_url: process.env.FRONTEND_URL || "https://sirahabazaar.com",
+        chrome_web_icon: "/icon-192x192.png",
+        firefox_icon: "/icon-192x192.png",
+        chrome_web_badge: "/icon-72x72.png"
+      };
+      const response = await this.client.createNotification(notification);
+      console.log("\u2705 OneSignal notification sent:", response.body.id);
+      return true;
+    } catch (error) {
+      console.error("OneSignal send failed:", error);
+      return false;
+    }
+  }
+  // Send notification to all users
+  static async sendToAll(title, message, data) {
+    if (!this.isConfigured()) {
+      console.warn("OneSignal not configured");
+      return false;
+    }
+    try {
+      const notification = {
+        contents: { en: message },
+        headings: { en: title },
+        included_segments: ["Subscribed Users"],
+        data: data || {},
+        web_url: process.env.FRONTEND_URL || "https://sirahabazaar.com",
+        chrome_web_icon: "/icon-192x192.png",
+        firefox_icon: "/icon-192x192.png",
+        chrome_web_badge: "/icon-72x72.png"
+      };
+      const response = await this.client.createNotification(notification);
+      console.log("\u2705 OneSignal broadcast sent:", response.body.id);
+      return true;
+    } catch (error) {
+      console.error("OneSignal broadcast failed:", error);
+      return false;
+    }
+  }
+  // Send notification to delivery partners
+  static async sendToDeliveryPartners(title, message, data) {
+    if (!this.isConfigured()) {
+      console.warn("OneSignal not configured");
+      return false;
+    }
+    try {
+      const notification = {
+        contents: { en: message },
+        headings: { en: title },
+        filters: [
+          { field: "tag", key: "user_type", relation: "=", value: "delivery_partner" }
+        ],
+        data: data || {},
+        web_url: process.env.FRONTEND_URL || "https://sirahabazaar.com",
+        chrome_web_icon: "/icon-192x192.png",
+        firefox_icon: "/icon-192x192.png",
+        chrome_web_badge: "/icon-72x72.png"
+      };
+      const response = await this.client.createNotification(notification);
+      console.log("\u2705 OneSignal delivery partner notification sent:", response.body.id);
+      return true;
+    } catch (error) {
+      console.error("OneSignal delivery partner send failed:", error);
+      return false;
+    }
+  }
+  // Send order notification
+  static async sendOrderNotification(userId, orderId, status) {
+    const statusMessages = {
+      "placed": "Your order has been placed successfully!",
+      "confirmed": "Your order has been confirmed by the store",
+      "preparing": "Your order is being prepared",
+      "ready_for_pickup": "Your order is ready for pickup",
+      "assigned": "A delivery partner has been assigned to your order",
+      "picked_up": "Your order has been picked up for delivery",
+      "out_for_delivery": "Your order is out for delivery",
+      "delivered": "Your order has been delivered successfully!",
+      "cancelled": "Your order has been cancelled"
+    };
+    const message = statusMessages[status] || `Your order status has been updated: ${status}`;
+    const title = `Order #${orderId} Update`;
+    return this.sendToUser(userId, title, message, {
+      orderId,
+      status,
+      type: "order_update",
+      url: `/orders/${orderId}/tracking`
+    });
+  }
+  // Send delivery assignment notification
+  static async sendDeliveryAssignment(deliveryPartnerId, orderId, pickupAddress, deliveryAddress, earnings) {
+    const title = "\u{1F69B} New Delivery Available";
+    const message = `Pickup from ${pickupAddress}. Earn \u20B9${earnings}`;
+    return this.sendToUser(deliveryPartnerId, title, message, {
+      orderId,
+      pickupAddress,
+      deliveryAddress,
+      earnings,
+      type: "delivery_assignment",
+      url: "/delivery-partner/dashboard"
+    });
+  }
+};
+OneSignalServerService.initialize();
+
+// server/routes.ts
 init_schema();
 import crypto from "crypto";
 import admin3 from "firebase-admin";
@@ -14003,11 +14168,19 @@ async function registerRoutes(app2) {
           error: "userId and subscription are required"
         });
       }
-      console.log("Push subscription received for user:", userId);
-      res.json({ success: true });
+      console.log("\u{1F4BE} Storing push subscription for user:", userId);
+      console.log("\u{1F4F1} Subscription endpoint:", subscription.endpoint);
+      const success = await pushNotificationService_default.subscribeToPushNotifications(userId, subscription);
+      if (success) {
+        console.log("\u2705 Push subscription stored successfully");
+        res.json({ success: true, message: "Successfully subscribed to push notifications" });
+      } else {
+        console.log("\u274C Failed to store push subscription");
+        res.status(500).json({ success: false, error: "Failed to store subscription" });
+      }
     } catch (error) {
       console.error("Error storing push subscription:", error);
-      res.status(500).json({ error: "Failed to store subscription" });
+      res.status(500).json({ error: "Failed to store subscription", details: error.message });
     }
   });
   app2.post("/api/pwa/install-analytics", (req, res) => {
@@ -14304,6 +14477,124 @@ async function registerRoutes(app2) {
         error: "Failed to send FCM test notification",
         details: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+  app2.post("/api/onesignal/send", async (req, res) => {
+    try {
+      const { userId, title, message, data } = req.body;
+      if (!userId || !message) {
+        return res.status(400).json({ error: "userId and message are required" });
+      }
+      const success = await OneSignalServerService.sendToUser(
+        userId.toString(),
+        title || "Siraha Bazaar",
+        message,
+        data
+      );
+      res.json({
+        success,
+        message: success ? "Notification sent successfully" : "Failed to send notification"
+      });
+    } catch (error) {
+      console.error("OneSignal send error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal notification" });
+    }
+  });
+  app2.post("/api/onesignal/send-to-all", async (req, res) => {
+    try {
+      const { title, message, data } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+      const success = await OneSignalServerService.sendToAll(
+        title || "Siraha Bazaar",
+        message,
+        data
+      );
+      res.json({
+        success,
+        message: success ? "Broadcast notification sent successfully" : "Failed to send broadcast"
+      });
+    } catch (error) {
+      console.error("OneSignal broadcast error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal broadcast" });
+    }
+  });
+  app2.post("/api/onesignal/send-order-notification", async (req, res) => {
+    try {
+      const { userId, orderId, status } = req.body;
+      if (!userId || !orderId || !status) {
+        return res.status(400).json({ error: "userId, orderId, and status are required" });
+      }
+      const success = await OneSignalServerService.sendOrderNotification(
+        userId.toString(),
+        parseInt(orderId),
+        status
+      );
+      res.json({
+        success,
+        message: success ? "Order notification sent successfully" : "Failed to send order notification"
+      });
+    } catch (error) {
+      console.error("OneSignal order notification error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal order notification" });
+    }
+  });
+  app2.post("/api/onesignal/send-delivery-assignment", async (req, res) => {
+    try {
+      const { deliveryPartnerId, orderId, pickupAddress, deliveryAddress, earnings } = req.body;
+      if (!deliveryPartnerId || !orderId || !pickupAddress || !deliveryAddress || !earnings) {
+        return res.status(400).json({
+          error: "deliveryPartnerId, orderId, pickupAddress, deliveryAddress, and earnings are required"
+        });
+      }
+      const success = await OneSignalServerService.sendDeliveryAssignment(
+        deliveryPartnerId.toString(),
+        parseInt(orderId),
+        pickupAddress,
+        deliveryAddress,
+        parseFloat(earnings)
+      );
+      res.json({
+        success,
+        message: success ? "Delivery assignment notification sent successfully" : "Failed to send delivery assignment"
+      });
+    } catch (error) {
+      console.error("OneSignal delivery assignment error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal delivery assignment" });
+    }
+  });
+  app2.get("/api/onesignal/status", async (req, res) => {
+    try {
+      const isConfigured = OneSignalServerService.isConfigured();
+      res.json({
+        configured: isConfigured,
+        appId: process.env.ONESIGNAL_APP_ID ? "Configured" : "Missing",
+        apiKey: process.env.ONESIGNAL_API_KEY ? "Configured" : "Missing",
+        status: isConfigured ? "Ready" : "Not configured"
+      });
+    } catch (error) {
+      console.error("OneSignal status error:", error);
+      res.status(500).json({ error: "Failed to get OneSignal status" });
+    }
+  });
+  app2.post("/api/onesignal/test", async (req, res) => {
+    try {
+      const { title, message } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+      const success = await OneSignalServerService.sendToAll(
+        title || "Test Notification",
+        message
+      );
+      res.json({
+        success,
+        message: success ? "Test notification sent successfully" : "Failed to send test notification"
+      });
+    } catch (error) {
+      console.error("OneSignal test error:", error);
+      res.status(500).json({ error: "Failed to send OneSignal test notification" });
     }
   });
   const httpServer = createServer(app2);

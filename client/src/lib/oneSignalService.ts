@@ -70,7 +70,7 @@ export class OneSignalService {
     return new Promise((resolve) => {
       window.OneSignal.push(function() {
         window.OneSignal.showNativePrompt();
-        window.OneSignal.on('subscriptionChange', function(isSubscribed) {
+        window.OneSignal.on('subscriptionChange', function(isSubscribed: boolean) {
           resolve(isSubscribed);
         });
       });
@@ -100,7 +100,7 @@ export class OneSignalService {
   static async getUserId(): Promise<string | null> {
     return new Promise((resolve) => {
       window.OneSignal.push(function() {
-        window.OneSignal.getUserId(function(userId) {
+        window.OneSignal.getUserId(function(userId: string | null) {
           resolve(userId);
         });
       });

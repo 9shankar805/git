@@ -4,18 +4,18 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, MessagePayload } from 'firebase/messaging';
 
-// Firebase configuration - replace with your actual config
+// Firebase configuration - using your actual config from .env
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDjHQMcQjrpOdBn7DtB2xY7YFaE9ExAmpL",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "myweb-4cf30.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "myweb-4cf30",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "myweb-4cf30.appspot.com", 
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "397726322234",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:397726322234:web:fb62c9b3b2d4c9e3d4d3f3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBbHSV2EJZ9BPE1C1ZC4_ZNYwFYJIR9VSo",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "myweb-1c1f37b3.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "myweb-1c1f37b3",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "myweb-1c1f37b3.firebasestorage.app", 
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "774950702828",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:774950702828:web:09c2dfc1198d45244a9fc9"
 };
 
-// VAPID key from Firebase Console
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || "BLOTwE3i1oHIZpFN5BqF9SiEPQBUXk7sKJFa1XhkN2pQm1xV5z5LXxE3K8Q7m1pHdZ5YhT3nX2pQK7vE1gHsF9R";
+// VAPID key from your .env file
+const VAPID_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "BG5V1u2eNls8IInm93_F-ZBb2hXaEZIy4AjHBrIjDeClqi4wLVlVZ5x64WeMzFESgByQjeOtcL1UrGMGFQm0GlE";
 
 export class FirebaseNotificationService {
   private static app: any = null;

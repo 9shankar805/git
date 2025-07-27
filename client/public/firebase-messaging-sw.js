@@ -5,14 +5,14 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Firebase configuration
+// Firebase configuration - using your actual config
 const firebaseConfig = {
-  apiKey: "AIzaSyDjHQMcQjrpOdBn7DtB2xY7YFaE9ExAmpL",
-  authDomain: "myweb-4cf30.firebaseapp.com",
-  projectId: "myweb-4cf30",
-  storageBucket: "myweb-4cf30.appspot.com",
-  messagingSenderId: "397726322234",
-  appId: "1:397726322234:web:fb62c9b3b2d4c9e3d4d3f3"
+  apiKey: "AIzaSyBbHSV2EJZ9BPE1C1ZC4_ZNYwFYJIR9VSo",
+  authDomain: "myweb-1c1f37b3.firebaseapp.com",
+  projectId: "myweb-1c1f37b3",
+  storageBucket: "myweb-1c1f37b3.firebasestorage.app",
+  messagingSenderId: "774950702828",
+  appId: "1:774950702828:web:09c2dfc1198d45244a9fc9"
 };
 
 // Initialize Firebase

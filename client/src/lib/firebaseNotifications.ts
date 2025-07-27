@@ -145,7 +145,7 @@ export class FirebaseNotificationService {
         return false;
       }
 
-      const response = await fetch('/api/fcm/send-test', {
+      const response = await fetch('/api/test-fcm-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -155,10 +155,43 @@ export class FirebaseNotificationService {
         }),
       });
 
+      if (response.ok) {
+        // Also save to notification center for immediate display
+        await this.saveNotificationToCenter(title, body, 'test');
+      }
+
       return response.ok;
     } catch (error) {
       console.error('Failed to send test notification:', error);
       return false;
+    }
+  }
+
+  // Save notification to the app's notification center
+  static async saveNotificationToCenter(title: string, body: string, type: string = 'firebase'): Promise<void> {
+    try {
+      // Get current user ID from localStorage or auth context
+      const currentUser = JSON.parse(localStorage.getItem('auth-user') || '{}');
+      if (!currentUser.id) {
+        console.log('No user logged in - skipping notification save');
+        return;
+      }
+
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          title,
+          message: body,
+          type,
+          isRead: false
+        }),
+      });
+
+      console.log('✅ Notification saved to notification center');
+    } catch (error) {
+      console.error('Failed to save notification to center:', error);
     }
   }
 
@@ -181,8 +214,14 @@ export class FirebaseNotificationService {
           if (success) {
             // Setup foreground message listener
             this.setupForegroundMessageListener((payload) => {
-              const { notification } = payload;
+              const { notification, data } = payload;
               if (notification) {
+                // Save to notification center when FCM message is received
+                this.saveNotificationToCenter(
+                  notification.title || 'New Notification',
+                  notification.body || 'You have a new message',
+                  data?.type || 'firebase'
+                );
                 this.showLocalNotification(
                   notification.title || 'Siraha Bazaar',
                   notification.body || 'You have a new notification'

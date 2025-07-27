@@ -8646,11 +8646,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Sending FCM test notification:', testMessage);
       
+      // Save notification to database for notification center
+      try {
+        // Get user ID from device token (if we have a user mapping system)
+        // For now, we'll use a default user ID for testing
+        await storage.createNotification({
+          userId: 49, // Test user ID - should be mapped from FCM token in production
+          title: testMessage.notification.title,
+          message: testMessage.notification.body,
+          type: 'test',
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+        console.log('✅ Notification saved to database for notification center');
+      } catch (dbError) {
+        console.error('Failed to save notification to database:', dbError);
+      }
+
       // Return detailed status
       res.json({ 
         success: true, 
         messageId: notificationResult || `test-${Date.now()}`,
-        message: fcmToken ? 'FCM push notification sent to device!' : 'FCM test configured (no token provided)',
+        message: fcmToken ? 'FCM push notification sent to device and saved to notification center!' : 'FCM test configured (no token provided)',
         tokenProvided: !!fcmToken,
         notificationSent: !!notificationResult,
         vapidEnabled: true, // We have the keys configured

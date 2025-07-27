@@ -47,6 +47,35 @@ messaging.onBackgroundMessage(function(payload) {
     data: payload.data || {}
   };
 
+  // Save notification to database when received in background
+  try {
+    // Try to save to notification center via background sync
+    if ('serviceWorker' in navigator) {
+      self.registration.sync.register('save-notification');
+      
+      // Store notification data for sync
+      const notificationData = {
+        title: notificationTitle,
+        body: payload.notification?.body || 'You have a new notification',
+        type: payload.data?.type || 'firebase',
+        timestamp: Date.now()
+      };
+      
+      // Store in IndexedDB or local storage for background sync
+      if (typeof indexedDB !== 'undefined') {
+        const request = indexedDB.open('FCMNotifications', 1);
+        request.onsuccess = function(event) {
+          const db = event.target.result;
+          const transaction = db.transaction(['notifications'], 'readwrite');
+          const store = transaction.objectStore('notifications');
+          store.add(notificationData);
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save background notification:', error);
+  }
+
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 

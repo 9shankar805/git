@@ -16,8 +16,8 @@ import ModeSwiper from "@/components/ModeSwiper";
 import MobileNotificationBar from "@/components/MobileNotificationBar";
 import { AndroidBridge } from "@/lib/androidBridge";
 import { useEffect } from "react";
-import { initializeFirebaseNotifications, requestNotificationPermission } from "@/lib/firebaseNotifications";
-// OneSignal is initialized via HTML script tag to avoid React conflicts
+import FirebaseNotificationService from "@/lib/firebaseNotifications";
+// Firebase Cloud Messaging is initialized automatically via firebaseNotifications.ts
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Homepage from "@/pages/Homepage";
@@ -84,7 +84,7 @@ import ProtocolHandler from "@/pages/ProtocolHandler";
 import ShareTarget from "@/pages/ShareTarget";
 import PWAFeaturesShowcase from "@/pages/PWAFeaturesShowcase";
 import FCMTest from "@/pages/FCMTest";
-import OneSignalTest from "@/pages/OneSignalTest";
+import FCMTestPage from "@/pages/FCMTestPage";
 
 function AppRouter() {
   const { mode } = useAppMode();
@@ -132,7 +132,7 @@ function AppRouter() {
         {/* PWA Advanced Features */}
         <Route path="/pwa-features" component={PWAFeaturesShowcase} />
         <Route path="/fcm-test" component={FCMTest} />
-        <Route path="/onesignal-test" component={OneSignalTest} />
+        <Route path="/fcm-test-new" component={FCMTestPage} />
         <Route path="/sound-test" component={SoundEffectsTest} />
         <Route path="/file-handler" component={FileHandler} />
         <Route path="/protocol-handler" component={ProtocolHandler} />

@@ -161,102 +161,19 @@
     <!-- Root element for React -->
     <div id="root"></div>
 
-    <!-- Firebase Cloud Messaging Service Worker -->
-    <!-- OneSignal Push Notifications -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <!-- Firebase Cloud Messaging initialization script -->
     <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "6ae02b1b-ee75-4129-8f89-e481284a7b85",
-          safari_web_id: "web.onesignal.auto.641afdf7-f4bf-4e2a-9c3a-de381580c8ca",
-          allowLocalhostAsSecureOrigin: true,
-          autoRegister: true,
-          promptOptions: {
-            slidedown: {
-              prompts: [
-                {
-                  type: "push",
-                  autoPrompt: true,
-                  text: {
-                    actionMessage: "We'd like to show you notifications for order updates and delivery alerts.",
-                    acceptButton: "Allow",
-                    cancelButton: "No Thanks"
-                  },
-                  delay: {
-                    pageViews: 1,
-                    timeDelay: 3
-                  }
-                }
-              ]
-            }
-          },
-          welcomeNotification: {
-            "title": "Siraha Bazaar",
-            "message": "Welcome! You'll receive notifications about orders, deliveries, and special offers.",
-            "url": ""
-          },
-          notifyButton: {
-            enable: true,
-            size: 'medium',
-            theme: 'default',
-            position: 'bottom-right',
-            offset: {
-              bottom: '20px',
-              right: '20px'
-            },
-            colors: {
-              'circle.background': '#FF6B35',
-              'circle.foreground': 'white',
-              'badge.background': '#FF6B35',
-              'badge.foreground': 'white',
-              'badge.bordercolor': '#FF6B35',
-              'pulse.color': '#FF6B35'
-            },
-            text: {
-              'tip.state.unsubscribed': 'Subscribe to notifications',
-              'tip.state.subscribed': "You're subscribed to notifications",
-              'tip.state.blocked': "You've blocked notifications",
-              'message.prenotify': 'Click to subscribe to notifications',
-              'message.action.subscribed': "Thanks! You'll receive notifications for orders and deliveries.",
-              'message.action.resubscribed': "You're subscribed to notifications",
-              'message.action.unsubscribed': "You won't receive notifications anymore",
-              'dialog.main.title': 'Manage Site Notifications',
-              'dialog.main.button.subscribe': 'SUBSCRIBE',
-              'dialog.main.button.unsubscribe': 'UNSUBSCRIBE',
-              'dialog.blocked.title': 'Unblock Notifications',
-              'dialog.blocked.message': "Follow these instructions to allow notifications:"
-            }
-          }
-        });
-
-        // Add debugging for mobile
-        OneSignal.showSlidedownPrompt();
-        
-        // Log subscription status
-        OneSignal.isPushNotificationsEnabled(function(isEnabled) {
-          console.log("OneSignal Push Notifications Enabled: ", isEnabled);
-        });
-
-        OneSignal.getUserId(function(userId) {
-          console.log("OneSignal User ID: ", userId);
-          if (userId) {
-            window.oneSignalUserId = userId;
-          }
-        });
-      });
-    </script>
-
-    <script>
-      // Register service worker for FCM
+      // Firebase Cloud Messaging Service Worker registration
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-          .then(function(registration) {
-            console.log('Firebase Service Worker registered:', registration);
-          })
-          .catch(function(error) {
-            console.error('Firebase Service Worker registration failed:', error);
-          });
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then(function(registration) {
+              console.log('✅ Firebase Service Worker registered:', registration);
+            })
+            .catch(function(error) {
+              console.error('❌ Firebase Service Worker registration failed:', error);
+            });
+        });
       }
 
       // Hide loading screen once React loads

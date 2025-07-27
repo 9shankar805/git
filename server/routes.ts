@@ -16,7 +16,7 @@ import { googleImageService } from "./googleImageService";
 import { pixabayImageService } from "./pixabayImageService";
 import { EmailService } from "./emailService";
 import { AndroidNotificationService } from "./androidNotificationService";
-import { OneSignalServerService } from "./oneSignalService";
+import FirebaseAdminService from "./firebaseAdminService";
 import crypto from 'crypto';
 import webpush from 'web-push';
 import admin from 'firebase-admin';
@@ -8670,19 +8670,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // OneSignal Push Notification Routes
-  app.post("/api/onesignal/send", async (req, res) => {
+  // Firebase Cloud Messaging (FCM) Push Notification Routes
+  app.post("/api/fcm/send", async (req, res) => {
     try {
-      const { userId, title, message, data } = req.body;
+      const { token, title, body, data } = req.body;
 
-      if (!userId || !message) {
-        return res.status(400).json({ error: "userId and message are required" });
+      if (!token || !body) {
+        return res.status(400).json({ error: "token and body are required" });
       }
 
-      const success = await OneSignalServerService.sendToUser(
-        userId.toString(),
+      const success = await FirebaseAdminService.sendToToken(
+        token,
         title || "Siraha Bazaar",
-        message,
+        body,
         data
       );
 
@@ -8691,45 +8691,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: success ? "Notification sent successfully" : "Failed to send notification"
       });
     } catch (error) {
-      console.error("OneSignal send error:", error);
-      res.status(500).json({ error: "Failed to send OneSignal notification" });
+      console.error("FCM send error:", error);
+      res.status(500).json({ error: "Failed to send FCM notification" });
     }
   });
 
-  app.post("/api/onesignal/send-to-all", async (req, res) => {
+  app.post("/api/fcm/send-multiple", async (req, res) => {
     try {
-      const { title, message, data } = req.body;
+      const { tokens, title, body, data } = req.body;
 
-      if (!message) {
-        return res.status(400).json({ error: "message is required" });
+      if (!tokens || !Array.isArray(tokens) || !body) {
+        return res.status(400).json({ error: "tokens (array) and body are required" });
       }
 
-      const success = await OneSignalServerService.sendToAll(
+      const result = await FirebaseAdminService.sendToMultipleTokens(
+        tokens,
         title || "Siraha Bazaar",
-        message,
+        body,
         data
       );
 
       res.json({ 
-        success,
-        message: success ? "Broadcast notification sent successfully" : "Failed to send broadcast"
+        success: result.success > 0,
+        successCount: result.success,
+        failureCount: result.failed,
+        message: `Sent to ${result.success} devices, ${result.failed} failed`
       });
     } catch (error) {
-      console.error("OneSignal broadcast error:", error);
-      res.status(500).json({ error: "Failed to send OneSignal broadcast" });
+      console.error("FCM broadcast error:", error);
+      res.status(500).json({ error: "Failed to send FCM broadcast" });
     }
   });
 
-  app.post("/api/onesignal/send-order-notification", async (req, res) => {
+  app.post("/api/fcm/send-order-notification", async (req, res) => {
     try {
-      const { userId, orderId, status } = req.body;
+      const { token, orderId, status } = req.body;
 
-      if (!userId || !orderId || !status) {
-        return res.status(400).json({ error: "userId, orderId, and status are required" });
+      if (!token || !orderId || !status) {
+        return res.status(400).json({ error: "token, orderId, and status are required" });
       }
 
-      const success = await OneSignalServerService.sendOrderNotification(
-        userId.toString(),
+      const success = await FirebaseAdminService.sendOrderNotification(
+        token,
         parseInt(orderId),
         status
       );
@@ -8739,23 +8742,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: success ? "Order notification sent successfully" : "Failed to send order notification"
       });
     } catch (error) {
-      console.error("OneSignal order notification error:", error);
-      res.status(500).json({ error: "Failed to send OneSignal order notification" });
+      console.error("FCM order notification error:", error);
+      res.status(500).json({ error: "Failed to send FCM order notification" });
     }
   });
 
-  app.post("/api/onesignal/send-delivery-assignment", async (req, res) => {
+  app.post("/api/fcm/send-delivery-assignment", async (req, res) => {
     try {
-      const { deliveryPartnerId, orderId, pickupAddress, deliveryAddress, earnings } = req.body;
+      const { token, orderId, pickupAddress, deliveryAddress, earnings } = req.body;
 
-      if (!deliveryPartnerId || !orderId || !pickupAddress || !deliveryAddress || !earnings) {
+      if (!token || !orderId || !pickupAddress || !deliveryAddress || !earnings) {
         return res.status(400).json({ 
-          error: "deliveryPartnerId, orderId, pickupAddress, deliveryAddress, and earnings are required" 
+          error: "token, orderId, pickupAddress, deliveryAddress, and earnings are required" 
         });
       }
 
-      const success = await OneSignalServerService.sendDeliveryAssignment(
-        deliveryPartnerId.toString(),
+      const success = await FirebaseAdminService.sendDeliveryAssignment(
+        token,
         parseInt(orderId),
         pickupAddress,
         deliveryAddress,
@@ -8767,47 +8770,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: success ? "Delivery assignment notification sent successfully" : "Failed to send delivery assignment"
       });
     } catch (error) {
-      console.error("OneSignal delivery assignment error:", error);
-      res.status(500).json({ error: "Failed to send OneSignal delivery assignment" });
+      console.error("FCM delivery assignment error:", error);
+      res.status(500).json({ error: "Failed to send FCM delivery assignment" });
     }
   });
 
-  app.get("/api/onesignal/status", async (req, res) => {
+  app.get("/api/fcm/status", async (req, res) => {
     try {
-      const isConfigured = OneSignalServerService.isConfigured();
+      const isConfigured = FirebaseAdminService.isConfigured();
       
       res.json({
         configured: isConfigured,
-        appId: process.env.ONESIGNAL_APP_ID ? 'Configured' : 'Missing',
-        apiKey: process.env.ONESIGNAL_API_KEY ? 'Configured' : 'Missing',
+        projectId: process.env.FIREBASE_PROJECT_ID ? 'Configured' : 'Missing',
+        privateKey: process.env.FIREBASE_PRIVATE_KEY ? 'Configured' : 'Missing',
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'Configured' : 'Missing',
         status: isConfigured ? 'Ready' : 'Not configured'
       });
     } catch (error) {
-      console.error("OneSignal status error:", error);
-      res.status(500).json({ error: "Failed to get OneSignal status" });
+      console.error("FCM status error:", error);
+      res.status(500).json({ error: "Failed to get FCM status" });
     }
   });
 
-  app.post("/api/onesignal/test", async (req, res) => {
+  app.post("/api/fcm/send-test", async (req, res) => {
     try {
-      const { title, message } = req.body;
+      const { token, title, body } = req.body;
 
-      if (!message) {
-        return res.status(400).json({ error: "message is required" });
+      if (!token) {
+        return res.status(400).json({ error: "token is required" });
       }
 
-      const success = await OneSignalServerService.sendToAll(
-        title || "Test Notification",
-        message
-      );
+      const success = await FirebaseAdminService.sendTestNotification(token);
 
       res.json({ 
         success,
         message: success ? "Test notification sent successfully" : "Failed to send test notification"
       });
     } catch (error) {
-      console.error("OneSignal test error:", error);
-      res.status(500).json({ error: "Failed to send OneSignal test notification" });
+      console.error("FCM test error:", error);
+      res.status(500).json({ error: "Failed to send FCM test notification" });
     }
   });
 

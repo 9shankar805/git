@@ -1,310 +1,203 @@
-// Firebase notification helper for mobile browsers
+// Firebase Cloud Messaging (FCM) Push Notification Service
+// Complete implementation with VAPID keys and service worker
+
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { getFirebaseConfig, getVapidKey, validateFirebaseConfig } from '@/config/firebase';
+import { getMessaging, getToken, onMessage, MessagePayload } from 'firebase/messaging';
 
-const firebaseConfig = getFirebaseConfig();
-const vapidKey = getVapidKey();
-
-let app: any = null;
-let messaging: any = null;
-
-export const initializeFirebaseNotifications = async () => {
-  try {
-    console.log('🚀 Initializing Firebase Cloud Messaging...');
-    console.log('🔧 Firebase Config:', {
-      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 20)}...` : 'missing',
-      projectId: firebaseConfig.projectId,
-      messagingSenderId: firebaseConfig.messagingSenderId
-    });
-    console.log('🔑 VAPID Key:', vapidKey ? `${vapidKey.substring(0, 20)}...` : 'missing');
-    
-    // Validate configuration
-    if (!validateFirebaseConfig(firebaseConfig)) {
-      throw new Error('Invalid Firebase configuration');
-    }
-    
-    if (!vapidKey) {
-      throw new Error('VAPID key is missing');
-    }
-    
-    if (!app) {
-      app = initializeApp(firebaseConfig);
-      console.log('✅ Firebase App initialized');
-    }
-    
-    if (!messaging && 'serviceWorker' in navigator) {
-      messaging = getMessaging(app);
-      console.log('✅ Firebase Messaging initialized');
-      
-      // Check if service worker already exists
-      const existingRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
-      if (!existingRegistration) {
-        console.log('📝 Registering Firebase service worker...');
-        try {
-          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('✅ Firebase service worker registered:', registration.scope);
-        } catch (swError: any) {
-          console.error('❌ Service worker registration failed:', swError);
-          throw new Error(`Service worker registration failed: ${swError?.message || 'Unknown error'}`);
-        }
-      } else {
-        console.log('✅ Firebase service worker already registered');
-      }
-      
-      // Check if we can get token immediately
-      console.log('🔍 Checking notification permission:', Notification.permission);
-      
-      if (Notification.permission === 'granted') {
-        try {
-          console.log('✅ Permission granted, generating FCM token...');
-          const token = await getToken(messaging, { vapidKey });
-          if (token) {
-            console.log('🎉 FCM Token automatically generated on initialization!');
-            console.log('🔥 Firebase Cloud Messaging Token:');
-            console.log('📱 FCM Token:', token);
-            console.log('🔗 Token Length:', token.length, 'characters');
-            console.log('📋 Copy this token for testing:', token);
-            console.log('📝 Token (abbreviated):', token.substring(0, 20) + '...' + token.substring(token.length - 20));
-          }
-        } catch (tokenError) {
-          console.error('❌ Error generating FCM token:', tokenError);
-        }
-      } else {
-        console.log('⚠️ FCM Token will be generated when permission is granted');
-        console.log('💡 Call requestNotificationPermission() to get the token');
-      }
-    }
-    
-    return { app, messaging };
-  } catch (error) {
-    console.error('❌ Error initializing Firebase:', error);
-    throw error;
-  }
+// Firebase configuration - replace with your actual config
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDjHQMcQjrpOdBn7DtB2xY7YFaE9ExAmpL",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "myweb-4cf30.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "myweb-4cf30",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "myweb-4cf30.appspot.com", 
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "397726322234",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:397726322234:web:fb62c9b3b2d4c9e3d4d3f3"
 };
 
-export const requestNotificationPermission = async () => {
-  try {
-    if (Notification.permission === 'granted') {
-      return true;
-    }
-    
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
-  } catch (error) {
-    console.error('Error requesting notification permission:', error);
-    return false;
-  }
-};
+// VAPID key from Firebase Console
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || "BLOTwE3i1oHIZpFN5BqF9SiEPQBUXk7sKJFa1XhkN2pQm1xV5z5LXxE3K8Q7m1pHdZ5YhT3nX2pQK7vE1gHsF9R";
 
-export const getFirebaseToken = async () => {
-  try {
-    console.log('🔄 Starting FCM token generation process...');
-    
-    // Check notification permission first
-    if (Notification.permission !== 'granted') {
-      console.log('⚠️ Notification permission not granted. Current status:', Notification.permission);
-      throw new Error('Notification permission is required to generate FCM token. Please grant permission first.');
-    }
-    
-    await initializeFirebaseNotifications();
-    
-    if (!messaging) {
-      throw new Error('Firebase messaging not initialized properly');
-    }
-    
-    console.log('🎯 Attempting to get FCM token with VAPID key...');
-    const token = await getToken(messaging, { vapidKey });
-    
-    if (!token) {
-      throw new Error('Failed to generate FCM token. This may be due to blocked notifications or browser restrictions.');
-    }
-    
-    // Enhanced logging like in YouTube tutorials
-    console.log('🔥 Firebase Cloud Messaging Token:');
-    console.log('📱 FCM Token:', token);
-    console.log('🔗 Token Length:', token.length, 'characters');
-    console.log('📋 Copy this token for testing:', token);
-    console.log('📝 Token (abbreviated):', token.substring(0, 20) + '...' + token.substring(token.length - 20));
-    
-    return token;
-  } catch (error: any) {
-    console.error('❌ Error getting Firebase token:', error);
-    
-    // Provide more specific error messages
-    if (error?.code === 'messaging/permission-blocked') {
-      throw new Error('Push notifications are blocked in your browser. Please enable notifications and try again.');
-    } else if (error?.code === 'messaging/token-subscribe-failed') {
-      throw new Error('Failed to subscribe to FCM. This may be due to network issues or Firebase configuration problems.');
-    } else if (error?.code === 'messaging/invalid-vapid-key') {
-      throw new Error('Invalid VAPID key configuration. Please check Firebase project settings.');
-    }
-    
-    throw error;
-  }
-};
+export class FirebaseNotificationService {
+  private static app: any = null;
+  private static messaging: any = null;
+  private static initialized = false;
+  private static currentToken: string | null = null;
 
-export const saveDeviceToken = async (userId: number, token: string) => {
-  try {
-    const response = await fetch('/api/device-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        token,
-        deviceType: 'web',
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to save token: ${response.statusText}`);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error saving device token:', error);
-    throw error;
-  }
-};
+  static async initialize(): Promise<boolean> {
+    if (this.initialized) return true;
 
-export const setupForegroundMessageListener = (callback?: (payload: any) => void) => {
-  if (!messaging) return;
-  
-  onMessage(messaging, (payload) => {
-    console.log('Foreground message received:', payload);
-    
-    // Play notification sound effect
     try {
-      const { playSound } = require('../lib/soundEffects');
-      playSound.notification();
-    } catch (error) {
-      console.log('Sound effect not available:', error);
-    }
-    
-    // Show notification manually for foreground messages
-    if (Notification.permission === 'granted') {
-      const notification = new Notification(
-        payload.notification?.title || 'Siraha Bazaar',
-        {
-          body: payload.notification?.body,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
-          data: payload.data,
-          tag: payload.data?.type || 'general',
-          requireInteraction: false,
-          silent: false,
-          vibrate: [200, 100, 200] as any,
-        }
-      );
-      
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-        if (callback) callback(payload);
-      };
-      
-      // Auto close after 5 seconds
-      setTimeout(() => notification.close(), 5000);
-    }
-    
-    if (callback) callback(payload);
-  });
-};
-
-export const testNotificationSetup = async (userId: number) => {
-  try {
-    // Check if running in Android app
-    const { AndroidBridge } = await import('@/lib/androidBridge');
-    
-    if (AndroidBridge.isAndroidApp()) {
-      // Android app handles FCM automatically
-      AndroidBridge.logMessage('Setting up notifications for Android app');
-      
-      // Register for Android notifications
-      const success = await AndroidBridge.registerForNotifications(userId);
-      if (success) {
-        AndroidBridge.showToast('Push notifications enabled!');
+      // Check if browser supports push notifications
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push messaging is not supported');
+        return false;
       }
-      return success;
+
+      // Initialize Firebase app
+      this.app = initializeApp(firebaseConfig);
+      this.messaging = getMessaging(this.app);
+
+      // Register service worker
+      await this.registerServiceWorker();
+
+      this.initialized = true;
+      console.log('✅ Firebase Cloud Messaging initialized');
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase initialization failed:', error);
+      return false;
     }
-    
-    // Web browser setup
-    // 1. Request permission
-    const hasPermission = await requestNotificationPermission();
-    if (!hasPermission) {
-      throw new Error('Notification permission not granted');
+  }
+
+  private static async registerServiceWorker(): Promise<void> {
+    try {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('Service Worker registered:', registration);
+    } catch (error) {
+      console.error('Service Worker registration failed:', error);
+      throw error;
     }
-    
-    // 2. Initialize Firebase
-    await initializeFirebaseNotifications();
-    
-    // 3. Get token
-    const token = await getFirebaseToken();
-    if (!token) {
-      throw new Error('Failed to get Firebase token');
+  }
+
+  static async requestPermission(): Promise<boolean> {
+    try {
+      if (!this.initialized) {
+        const initSuccess = await this.initialize();
+        if (!initSuccess) return false;
+      }
+
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        console.log('✅ Notification permission granted');
+        return true;
+      } else {
+        console.log('❌ Notification permission denied');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting permission:', error);
+      return false;
     }
-    
-    // 4. Save token to server (and send to Android if applicable)
-    await saveDeviceToken(userId, token);
-    AndroidBridge.setFirebaseToken(token);
-    
-    // 5. Setup message listener
-    setupForegroundMessageListener((payload) => {
-      console.log('Test notification received:', payload);
+  }
+
+  static async getDeviceToken(): Promise<string | null> {
+    try {
+      if (!this.initialized) {
+        const initSuccess = await this.initialize();
+        if (!initSuccess) return null;
+      }
+
+      const token = await getToken(this.messaging, {
+        vapidKey: VAPID_KEY,
+      });
+
+      if (token) {
+        this.currentToken = token;
+        console.log('✅ FCM Device Token:', token);
+        return token;
+      } else {
+        console.log('No registration token available');
+        return null;
+      }
+    } catch (error) {
+      console.error('An error occurred while retrieving token:', error);
+      return null;
+    }
+  }
+
+  static getCurrentToken(): string | null {
+    return this.currentToken;
+  }
+
+  static setupForegroundMessageListener(callback: (payload: MessagePayload) => void): void {
+    if (!this.messaging) {
+      console.error('Firebase messaging not initialized');
+      return;
+    }
+
+    onMessage(this.messaging, (payload) => {
+      console.log('Message received in foreground:', payload);
+      callback(payload);
     });
-    
-    // 6. Send test notification
-    const response = await fetch('/api/test-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        title: 'Push Notifications Enabled!',
-        message: 'You will now receive notifications from Siraha Bazaar',
-        type: 'setup_test',
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to send test notification');
+  }
+
+  static async sendTestNotification(title: string = 'Test Notification', body: string = 'This is a test from Firebase!'): Promise<boolean> {
+    try {
+      const token = this.currentToken || await this.getDeviceToken();
+      if (!token) {
+        console.error('No device token available');
+        return false;
+      }
+
+      const response = await fetch('/api/fcm/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          title,
+          body,
+        }),
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Failed to send test notification:', error);
+      return false;
     }
-    
-    return true;
-  } catch (error) {
-    console.error('Error testing notification setup:', error);
-    throw error;
+  }
+
+  static showLocalNotification(title: string, body: string, icon?: string): void {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: icon || '/icon-192x192.png',
+        badge: '/icon-72x72.png',
+        requireInteraction: true,
+      });
+    }
+  }
+
+  // Auto-initialize when imported
+  static autoInit(): void {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', () => {
+        this.initialize().then((success) => {
+          if (success) {
+            // Setup foreground message listener
+            this.setupForegroundMessageListener((payload) => {
+              const { notification } = payload;
+              if (notification) {
+                this.showLocalNotification(
+                  notification.title || 'Siraha Bazaar',
+                  notification.body || 'You have a new notification'
+                );
+              }
+            });
+          }
+        });
+      });
+    }
+  }
+}
+
+// Auto-initialize when module loads
+FirebaseNotificationService.autoInit();
+
+// Wrapper functions for compatibility with existing code
+export const initializeFirebaseNotifications = () => FirebaseNotificationService.initialize();
+export const requestNotificationPermission = () => FirebaseNotificationService.requestPermission();
+export const getFirebaseToken = () => FirebaseNotificationService.getDeviceToken();
+export const testNotificationSetup = (userIdOrTitle?: number | string, body?: string) => {
+  if (typeof userIdOrTitle === 'number') {
+    // For compatibility with MobileNotificationBar
+    return FirebaseNotificationService.requestPermission();
+  } else {
+    // For compatibility with other components
+    return FirebaseNotificationService.sendTestNotification(userIdOrTitle, body);
   }
 };
+export const supportsNotifications = () => 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+export const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Mobile-specific notification utilities
-export const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
-
-export const supportsNotifications = () => {
-  return 'Notification' in window && 'serviceWorker' in navigator;
-};
-
-export const showManualNotification = (title: string, body: string, options: any = {}) => {
-  if (!supportsNotifications() || Notification.permission !== 'granted') {
-    return false;
-  }
-  
-  const notification = new Notification(title, {
-    body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    // Vibrate is not in TypeScript types but works on mobile
-    ...(isMobileDevice() && { vibrate: [200, 100, 200] as any }),
-    ...options,
-  });
-  
-  // Auto close after 5 seconds
-  setTimeout(() => notification.close(), 5000);
-  
-  return true;
-};
+export default FirebaseNotificationService;

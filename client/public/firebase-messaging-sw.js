@@ -1,150 +1,117 @@
-// Firebase Cloud Messaging Service Worker
-// This file handles background push notifications for Siraha Bazaar
+// Firebase Messaging Service Worker
+// Handles background push notifications
 
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+// Import Firebase scripts
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Initialize Firebase in service worker
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBbHSV2EJZ9BPE1C1ZC4_ZNYwFYJIR9VSo",
-  authDomain: "myweb-1c1f37b3.firebaseapp.com",
-  projectId: "myweb-1c1f37b3",
-  storageBucket: "myweb-1c1f37b3.firebasestorage.app",
-  messagingSenderId: "774950702828",
-  appId: "1:774950702828:web:09c2dfc1198d45244a9fc9",
-  measurementId: "G-XH9SP47FYT"
+  apiKey: "AIzaSyDjHQMcQjrpOdBn7DtB2xY7YFaE9ExAmpL",
+  authDomain: "myweb-4cf30.firebaseapp.com",
+  projectId: "myweb-4cf30",
+  storageBucket: "myweb-4cf30.appspot.com",
+  messagingSenderId: "397726322234",
+  appId: "1:397726322234:web:fb62c9b3b2d4c9e3d4d3f3"
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
+// Retrieve firebase messaging
 const messaging = firebase.messaging();
 
 // Handle background messages
-messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message:', payload);
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
   const notificationTitle = payload.notification?.title || 'Siraha Bazaar';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    image: payload.notification?.imageUrl,
-    data: payload.data,
+    icon: payload.notification?.icon || '/icon-192x192.png',
+    badge: '/icon-72x72.png',
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
     actions: [
       {
         action: 'open',
-        title: 'Open'
+        title: 'Open App',
+        icon: '/icon-72x72.png'
       },
       {
-        action: 'dismiss',
-        title: 'Dismiss'
+        action: 'close',
+        title: 'Close',
+        icon: '/icon-72x72.png'
       }
     ],
-    requireInteraction: false,
-    tag: payload.data?.type || 'general',
-    silent: false,
-    vibrate: [200, 100, 200], // For mobile devices
-    timestamp: Date.now()
+    data: payload.data || {}
   };
 
-  // Show notification
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification click
-self.addEventListener('notificationclick', (event) => {
-  console.log('Notification click received:', event);
+// Handle notification clicks
+self.addEventListener('notificationclick', function(event) {
+  console.log('[firebase-messaging-sw.js] Notification click received.');
 
   event.notification.close();
 
-  if (event.action === 'dismiss') {
+  if (event.action === 'close') {
     return;
   }
 
-  // Handle different notification types
-  const data = event.notification.data;
-  let urlToOpen = '/';
-
-  if (data) {
-    switch (data.type) {
-      case 'order_update':
-        urlToOpen = `/orders/${data.orderId}`;
-        break;
-      case 'delivery_assignment':
-        urlToOpen = `/delivery/${data.orderId}`;
-        break;
-      case 'promotion':
-        urlToOpen = '/promotions';
-        break;
-      case 'new_order':
-        urlToOpen = '/seller/orders';
-        break;
-      default:
-        urlToOpen = '/';
-    }
-  }
-
-  // Open the app
+  // Open the app when notification is clicked
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if app is already open
-      for (const client of clientList) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // If a window is already open, focus it
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
         if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.focus();
-          client.postMessage({
-            type: 'NOTIFICATION_CLICK',
-            data: data,
-            url: urlToOpen
-          });
-          return;
+          return client.focus();
         }
       }
-
-      // Open new window if app is not open
+      
+      // If no window is open, open a new one
       if (clients.openWindow) {
-        return clients.openWindow(self.location.origin + urlToOpen);
+        const urlToOpen = event.notification.data?.url || '/';
+        return clients.openWindow(urlToOpen);
       }
     })
   );
 });
 
-// Handle push event directly (for better mobile support)
-self.addEventListener('push', (event) => {
-  console.log('Push event received:', event);
+// Service Worker cache management
+const CACHE_NAME = 'siraha-bazaar-fcm-v1';
+const urlsToCache = [
+  '/',
+  '/icon-192x192.png',
+  '/icon-72x72.png',
+  '/manifest.json'
+];
 
-  if (!event.data) {
-    console.log('Push event has no data');
-    return;
-  }
+self.addEventListener('install', function(event) {
+  console.log('[firebase-messaging-sw.js] Service Worker installing');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(function(cache) {
+        console.log('Service Worker: Cache opened');
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
 
-  try {
-    const payload = event.data.json();
-    console.log('Push payload:', payload);
-    
-    const notificationTitle = payload.notification?.title || 'Siraha Bazaar';
-    const notificationOptions = {
-      body: payload.notification?.body || 'You have a new notification',
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      image: payload.notification?.imageUrl,
-      data: payload.data,
-      requireInteraction: false,
-      tag: payload.data?.type || 'general',
-      silent: false,
-      vibrate: [200, 100, 200],
-      timestamp: Date.now(),
-      actions: [
-        {
-          action: 'open',
-          title: 'Open'
-        }
-      ]
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(notificationTitle, notificationOptions)
-    );
-  } catch (error) {
-    console.error('Error processing push event:', error);
-  }
+self.addEventListener('activate', function(event) {
+  console.log('[firebase-messaging-sw.js] Service Worker activating');
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Service Worker: Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
 });

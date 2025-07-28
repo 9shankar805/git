@@ -8599,6 +8599,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // FCM server status endpoint for diagnostics
+  app.get('/api/fcm/server-status', async (req, res) => {
+    try {
+      // Check if Firebase service account file exists
+      const fs = await import('fs');
+      const path = await import('path');
+      const serviceAccountPath = path.join(process.cwd(), 'firebase-service-account.json');
+      const hasServiceAccount = fs.existsSync(serviceAccountPath);
+      
+      // Check environment variables
+      const hasFirebaseEnvVars = !!(process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PROJECT_ID);
+      
+      // Check VAPID keys
+      const hasVapidKeys = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+      
+      // Try to get Firebase Admin status
+      let firebaseAdminStatus = 'not-initialized';
+      try {
+        const { default: FirebaseAdminV1Service } = await import('./firebaseAdminV1');
+        const adminStatus = FirebaseAdminV1Service.getInitializationStatus();
+        firebaseAdminStatus = adminStatus.hasCredentials ? 'configured' : 'missing-credentials';
+      } catch (error) {
+        firebaseAdminStatus = 'error';
+      }
+      
+      const isFullyConfigured = (hasServiceAccount || hasFirebaseEnvVars) && hasVapidKeys;
+      
+      res.json({
+        firebaseConfigured: isFullyConfigured,
+        hasServiceAccount,
+        hasFirebaseEnvVars,
+        hasVapidKeys,
+        firebaseAdminStatus,
+        projectId: process.env.FIREBASE_PROJECT_ID || 'myweb-1c1f37b3',
+        message: isFullyConfigured 
+          ? 'Server-side Firebase is fully configured'
+          : 'Server needs Firebase service account and VAPID keys for notifications',
+        details: {
+          serviceAccount: hasServiceAccount ? 'Present' : 'Missing',
+          envVars: hasFirebaseEnvVars ? 'Present' : 'Missing',
+          vapidKeys: hasVapidKeys ? 'Present' : 'Missing',
+          adminSDK: firebaseAdminStatus
+        }
+      });
+    } catch (error) {
+      console.error('FCM server status check error:', error);
+      res.status(500).json({
+        firebaseConfigured: false,
+        error: 'Failed to check server configuration',
+        details: (error as Error).message
+      });
+    }
+  });
+
   // Test FCM notification endpoint - HTTP v1 API
   app.post('/api/test-fcm-notification', async (req, res) => {
     try {

@@ -85,6 +85,8 @@ import ShareTarget from "@/pages/ShareTarget";
 import PWAFeaturesShowcase from "@/pages/PWAFeaturesShowcase";
 import FCMTest from "@/pages/FCMTest";
 import FCMTestPage from "@/pages/FCMTestPage";
+import FCMDiagnosticPage from "@/pages/FCMDiagnosticPage";
+import FCMInstantPage from "@/pages/FCMInstantPage";
 
 function AppRouter() {
   const { mode } = useAppMode();
@@ -133,6 +135,8 @@ function AppRouter() {
         <Route path="/pwa-features" component={PWAFeaturesShowcase} />
         <Route path="/fcm-test" component={FCMTest} />
         <Route path="/fcm-test-new" component={FCMTestPage} />
+        <Route path="/fcm-diagnostic" component={FCMDiagnosticPage} />
+        <Route path="/fcm-instant" component={FCMInstantPage} />
         <Route path="/sound-test" component={SoundEffectsTest} />
         <Route path="/file-handler" component={FileHandler} />
         <Route path="/protocol-handler" component={ProtocolHandler} />

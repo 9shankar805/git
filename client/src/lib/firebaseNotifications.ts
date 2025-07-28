@@ -129,7 +129,7 @@ export class FirebaseNotificationService {
       console.error('❌ FCM Token generation failed:', error);
       
       // Provide specific error guidance
-      if (error.code === 'messaging/token-subscribe-failed') {
+      if ((error as any).code === 'messaging/token-subscribe-failed') {
         console.error('🔧 Firebase project may require authentication. Check Firebase Console settings.');
       }
       

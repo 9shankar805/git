@@ -19,17 +19,41 @@ export default function FCMTokenDisplay() {
     console.log('🎬 User clicked Generate FCM Token (YouTube tutorial style)...');
     
     try {
-      // Check browser support first
+      // Check browser support first with detailed logging
+      console.log('🔍 Browser Support Check:');
+      console.log('- Notification support:', 'Notification' in window);
+      console.log('- ServiceWorker support:', 'serviceWorker' in navigator);
+      console.log('- PushManager support:', 'PushManager' in window);
+      console.log('- User Agent:', navigator.userAgent);
+      
       if (!('Notification' in window)) {
-        throw new Error('This browser does not support notifications');
+        console.warn('⚠️ Browser does not support notifications - trying in Chrome/Firefox/Edge');
+        toast({
+          title: "Browser Not Supported",
+          description: "Please open this in Chrome, Firefox, or Edge browser for FCM token generation",
+          variant: "destructive"
+        });
+        return;
       }
       
       if (!('serviceWorker' in navigator)) {
-        throw new Error('This browser does not support service workers');
+        console.warn('⚠️ Browser does not support service workers');
+        toast({
+          title: "Service Workers Not Supported", 
+          description: "Try opening in a modern browser (Chrome, Firefox, Edge)",
+          variant: "destructive"
+        });
+        return;
       }
       
       if (!('PushManager' in window)) {
-        throw new Error('This browser does not support push messaging');
+        console.warn('⚠️ Browser does not support push messaging');
+        toast({
+          title: "Push Messaging Not Supported",
+          description: "FCM requires a modern browser. Try Chrome, Firefox, or Edge",
+          variant: "destructive"
+        });
+        return;
       }
       
       console.log('✅ Browser supports all required features');
@@ -350,6 +374,12 @@ export default function FCMTokenDisplay() {
           <p>• The token is printed to console with detailed logging (like YouTube tutorials)</p>
           <p>• Use this token to test push notifications from Firebase Console</p>
           <p>• Token will be displayed both here and in the browser console</p>
+          <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900 rounded text-yellow-800 dark:text-yellow-200">
+            <p><strong>⚠️ Important:</strong> If you see "browser not supported" errors, please:</p>
+            <p>1. Open this URL in Chrome, Firefox, or Edge browser</p>
+            <p>2. Replit's embedded webview has limited notification support</p>
+            <p>3. Copy the URL and paste it in a regular browser tab</p>
+          </div>
         </div>
       </CardContent>
     </Card>

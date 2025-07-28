@@ -2634,6 +2634,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete user deletion (admin only - removes all user data)
+  app.delete("/api/admin/users/:id/complete", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { adminId, reason } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ error: "Admin ID is required" });
+      }
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      // Get user data before deletion for logging
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Prevent admins from deleting themselves
+      if (userId === adminId) {
+        return res.status(400).json({ error: "Cannot delete your own account" });
+      }
+
+      // Perform comprehensive deletion
+      const result = await storage.deleteUserCompletely(userId, adminId);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: `User ${user.email} and all associated data deleted successfully`,
+          deletedData: {
+            storesDeleted: result.deletedData?.stores?.length || 0,
+            productsDeleted: result.deletedData?.products?.length || 0,
+            ordersDeleted: result.deletedData?.orders?.length || 0
+          }
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Failed to delete user completely",
+          details: "Database operation failed"
+        });
+      }
+    } catch (error) {
+      console.error("Complete user deletion error:", error);
+      res.status(500).json({ 
+        error: "Failed to delete user completely",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Enhanced Admin Panel API Routes
 
   // Dashboard stats

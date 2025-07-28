@@ -36,6 +36,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
   deleteUserAccount(userId: number): Promise<void>;
+  deleteUserCompletely(userId: number, adminId: number): Promise<{ success: boolean; deletedData: any }>;
 
   // Admin user operations
   getAdminUser(id: number): Promise<AdminUser | undefined>;
@@ -2924,6 +2925,190 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating user password:', error);
       throw error;
+    }
+  }
+
+  // Comprehensive user deletion for admin purposes
+  async deleteUserCompletely(userId: number, adminId: number): Promise<{ success: boolean; deletedData: any }> {
+    const deletedData = {
+      user: null,
+      stores: [],
+      products: [],
+      orders: [],
+      orderItems: [],
+      cartItems: [],
+      wishlistItems: [],
+      notifications: [],
+      reviews: [],
+      deliveryPartner: null,
+      deviceTokens: []
+    };
+
+    try {
+      console.log(`🗑️ Admin ${adminId} initiating complete deletion of user ${userId}`);
+
+      // Get user data before deletion
+      const user = await this.getUser(userId);
+      if (!user) {
+        return { success: false, deletedData: null };
+      }
+      deletedData.user = user;
+
+      // 1. Get and delete user's stores and all associated data
+      const userStores = await db.select().from(stores).where(eq(stores.ownerId, userId));
+      deletedData.stores = userStores;
+
+      for (const store of userStores) {
+        // Get store products
+        const storeProducts = await db.select().from(products).where(eq(products.storeId, store.id));
+        deletedData.products.push(...storeProducts);
+
+        // Delete product-related data for each product
+        for (const product of storeProducts) {
+          // Delete product reviews and review likes
+          await db.delete(reviewLikes).where(eq(reviewLikes.reviewId, sql`(SELECT id FROM ${productReviews} WHERE ${productReviews.productId} = ${product.id})`));
+          await db.delete(productReviews).where(eq(productReviews.productId, product.id));
+          
+          // Delete product attributes
+          await db.delete(productAttributes).where(eq(productAttributes.productId, product.id));
+          
+          // Delete cart items containing this product
+          await db.delete(cartItems).where(eq(cartItems.productId, product.id));
+          
+          // Delete wishlist items containing this product
+          await db.delete(wishlistItems).where(eq(wishlistItems.productId, product.id));
+        }
+
+        // Delete all products for this store
+        await db.delete(products).where(eq(products.storeId, store.id));
+
+        // Delete store analytics
+        await db.delete(storeAnalytics).where(eq(storeAnalytics.storeId, store.id));
+
+        // Delete store reviews and likes
+        await db.delete(storeReviewLikes).where(eq(storeReviewLikes.reviewId, sql`(SELECT id FROM ${storeReviews} WHERE ${storeReviews.storeId} = ${store.id})`));
+        await db.delete(storeReviews).where(eq(storeReviews.storeId, store.id));
+
+        // Delete store promotions
+        await db.delete(promotions).where(eq(promotions.storeId, store.id));
+
+        // Delete store advertisements
+        await db.delete(advertisements).where(eq(advertisements.storeId, store.id));
+
+        // Delete inventory logs
+        await db.delete(inventoryLogs).where(eq(inventoryLogs.storeId, store.id));
+
+        // Delete order items for this store
+        const storeOrderItems = await db.select().from(orderItems).where(eq(orderItems.storeId, store.id));
+        deletedData.orderItems.push(...storeOrderItems);
+        await db.delete(orderItems).where(eq(orderItems.storeId, store.id));
+      }
+
+      // Delete all stores owned by user
+      await db.delete(stores).where(eq(stores.ownerId, userId));
+
+      // 2. Handle delivery partner data if user is a delivery partner
+      const deliveryPartner = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId));
+      if (deliveryPartner.length > 0) {
+        deletedData.deliveryPartner = deliveryPartner[0];
+        
+        // Delete delivery assignments and related data
+        await db.delete(deliveries).where(eq(deliveries.deliveryPartnerId, deliveryPartner[0].id));
+        
+        // Delete delivery partner record
+        await db.delete(deliveryPartners).where(eq(deliveryPartners.userId, userId));
+      }
+
+      // 3. Get and delete user's orders (as customer)
+      const userOrders = await db.select().from(orders).where(eq(orders.customerId, userId));
+      deletedData.orders = userOrders;
+
+      for (const order of userOrders) {
+        // Delete order tracking
+        await db.delete(orderTracking).where(eq(orderTracking.orderId, order.id));
+        
+        // Delete order items
+        const orderItemsForOrder = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+        deletedData.orderItems.push(...orderItemsForOrder);
+        await db.delete(orderItems).where(eq(orderItems.orderId, order.id));
+        
+        // Delete deliveries for this order
+        await db.delete(deliveries).where(eq(deliveries.orderId, order.id));
+        
+        // Delete payment transactions
+        await db.delete(paymentTransactions).where(sql`${paymentTransactions.data}->>'orderId' = ${order.id.toString()}`);
+      }
+
+      // Delete all orders by user
+      await db.delete(orders).where(eq(orders.customerId, userId));
+
+      // 4. Delete user's personal data
+      // Delete cart items
+      const userCartItems = await db.select().from(cartItems).where(eq(cartItems.userId, userId));
+      deletedData.cartItems = userCartItems;
+      await db.delete(cartItems).where(eq(cartItems.userId, userId));
+
+      // Delete wishlist items
+      const userWishlistItems = await db.select().from(wishlistItems).where(eq(wishlistItems.userId, userId));
+      deletedData.wishlistItems = userWishlistItems;
+      await db.delete(wishlistItems).where(eq(wishlistItems.userId, userId));
+
+      // Delete user's reviews and review likes
+      const userReviews = await db.select().from(productReviews).where(eq(productReviews.userId, userId));
+      deletedData.reviews = userReviews;
+      
+      for (const review of userReviews) {
+        await db.delete(reviewLikes).where(eq(reviewLikes.reviewId, review.id));
+      }
+      await db.delete(productReviews).where(eq(productReviews.userId, userId));
+      await db.delete(storeReviews).where(eq(storeReviews.userId, userId));
+
+      // Delete user's review likes on other reviews
+      await db.delete(reviewLikes).where(eq(reviewLikes.userId, userId));
+      await db.delete(storeReviewLikes).where(eq(storeReviewLikes.userId, userId));
+
+      // Delete notifications
+      const userNotifications = await db.select().from(notifications).where(eq(notifications.userId, userId));
+      deletedData.notifications = userNotifications;
+      await db.delete(notifications).where(eq(notifications.userId, userId));
+
+      // Delete push notification tokens
+      const userTokens = await db.select().from(pushNotificationTokens).where(eq(pushNotificationTokens.userId, userId));
+      deletedData.deviceTokens = userTokens;
+      await db.delete(pushNotificationTokens).where(eq(pushNotificationTokens.userId, userId));
+
+      // Delete password reset tokens
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+
+      // Delete website visits
+      await db.delete(websiteVisits).where(eq(websiteVisits.userId, userId));
+
+      // Delete support tickets
+      await db.delete(supportTickets).where(eq(supportTickets.userId, userId));
+
+      // 5. Finally delete the user account
+      await db.delete(users).where(eq(users.id, userId));
+
+      // Log the deletion for audit purposes
+      await this.createAdminLog({
+        adminId,
+        action: 'USER_COMPLETE_DELETE',
+        description: `Completely deleted user ${user.email} (ID: ${userId}) and all associated data`,
+        metadata: JSON.stringify({
+          deletedUserId: userId,
+          deletedUserEmail: user.email,
+          storesDeleted: deletedData.stores.length,
+          productsDeleted: deletedData.products.length,
+          ordersDeleted: deletedData.orders.length
+        })
+      });
+
+      console.log(`✅ Successfully deleted user ${userId} and all associated data`);
+      return { success: true, deletedData };
+
+    } catch (error) {
+      console.error(`❌ Error deleting user ${userId} completely:`, error);
+      return { success: false, deletedData: null };
     }
   }
 }

@@ -271,6 +271,31 @@ export default function ComprehensiveAdminDashboard() {
     },
   });
 
+  // Complete user deletion mutation (removes all user data)
+  const deleteUserCompletelyMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: number; reason?: string }) => {
+      return apiRequest(`/api/admin/users/${userId}/complete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId: adminUser?.id, reason })
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ 
+        title: "User deleted completely", 
+        description: `All user data removed: ${data.deletedData?.storesDeleted || 0} stores, ${data.deletedData?.productsDeleted || 0} products, ${data.deletedData?.ordersDeleted || 0} orders`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Deletion failed", 
+        description: error?.message || "Failed to delete user completely",
+        variant: "destructive"
+      });
+    },
+  });
+
   // Delivery partner approval mutations
   const approvePartnerMutation = useMutation({
     mutationFn: async (partnerId: number) => {
@@ -1055,6 +1080,79 @@ export default function ComprehensiveAdminDashboard() {
                                   <Ban className="h-4 w-4" />
                                 </Button>
                               )}
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive" 
+                                    className="bg-red-600 hover:bg-red-700"
+                                    title="Delete user and all associated data permanently"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle className="text-red-600">
+                                      Delete User Completely
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                                      <div className="flex items-center space-x-2">
+                                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                                        <h3 className="font-semibold text-red-800">Warning: This action cannot be undone!</h3>
+                                      </div>
+                                      <p className="text-red-700 mt-2 text-sm">
+                                        This will permanently delete <strong>{user.fullName}</strong> and ALL associated data:
+                                      </p>
+                                      <ul className="text-red-700 text-sm mt-2 list-disc list-inside space-y-1">
+                                        <li>User account and profile</li>
+                                        <li>All stores and products (if shopkeeper)</li>
+                                        <li>All orders and transaction history</li>
+                                        <li>Cart items and wishlist</li>
+                                        <li>Reviews and ratings</li>
+                                        <li>Notifications and logs</li>
+                                        <li>Delivery partner data (if applicable)</li>
+                                      </ul>
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="deleteReason">Reason for deletion (optional)</Label>
+                                      <Textarea 
+                                        id="deleteReason"
+                                        placeholder="Enter reason for deleting this user..."
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end space-x-2">
+                                      <Button variant="outline">Cancel</Button>
+                                      <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                          deleteUserCompletelyMutation.mutate({ 
+                                            userId: user.id,
+                                            reason: (document.getElementById('deleteReason') as HTMLTextAreaElement)?.value || undefined
+                                          });
+                                        }}
+                                        disabled={deleteUserCompletelyMutation.isPending}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        {deleteUserCompletelyMutation.isPending ? (
+                                          <>
+                                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                            Deleting...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Permanently
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             </div>
                           </TableCell>
                         </TableRow>

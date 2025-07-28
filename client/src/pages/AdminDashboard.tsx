@@ -190,6 +190,31 @@ export default function AdminDashboard() {
     },
   });
 
+  const deleteUserCompletelyMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: number; reason?: string }) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}/complete`, {
+        adminId: adminUser.id,
+        reason: reason || "Deleted by admin"
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users/pending"] });
+      toast({
+        title: "User deleted completely",
+        description: `All user data removed: ${data.deletedData?.storesDeleted || 0} stores, ${data.deletedData?.productsDeleted || 0} products, ${data.deletedData?.ordersDeleted || 0} orders`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deletion failed",
+        description: error?.message || "Failed to delete user completely",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = () => {
     localStorage.removeItem("adminUser");
     setLocation("/admin/login");
@@ -621,6 +646,71 @@ export default function AdminDashboard() {
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                className="bg-red-600 hover:bg-red-700"
+                                title="Delete user and all associated data permanently"
+                              >
+                                <UserMinus className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle className="text-red-600">
+                                  Delete User Completely
+                                </DialogTitle>
+                                <DialogDescription>
+                                  This will permanently delete {user.fullName} and ALL associated data. This action cannot be undone.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                                  <div className="flex items-center space-x-2">
+                                    <AlertCircle className="h-5 w-5 text-red-600" />
+                                    <h3 className="font-semibold text-red-800">Warning: This action cannot be undone!</h3>
+                                  </div>
+                                  <p className="text-red-700 mt-2 text-sm">
+                                    This will permanently delete <strong>{user.fullName}</strong> and ALL associated data:
+                                  </p>
+                                  <ul className="text-red-700 text-sm mt-2 list-disc list-inside space-y-1">
+                                    <li>User account and profile</li>
+                                    <li>All stores and products (if shopkeeper)</li>
+                                    <li>All orders and transaction history</li>
+                                    <li>Cart items and wishlist</li>
+                                    <li>Reviews and ratings</li>
+                                    <li>Notifications and logs</li>
+                                    <li>Delivery partner data (if applicable)</li>
+                                  </ul>
+                                </div>
+                                <Textarea
+                                  placeholder="Reason for deletion (optional)..."
+                                  value={rejectReason}
+                                  onChange={(e) => setRejectReason(e.target.value)}
+                                />
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => deleteUserCompletelyMutation.mutate({ 
+                                    userId: user.id, 
+                                    reason: rejectReason || "Deleted by admin" 
+                                  })}
+                                  disabled={deleteUserCompletelyMutation.isPending}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  {deleteUserCompletelyMutation.isPending ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  ) : (
+                                    <UserMinus className="h-4 w-4 mr-2" />
+                                  )}
+                                  {deleteUserCompletelyMutation.isPending ? "Deleting..." : "Delete User Completely"}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -81,6 +81,34 @@ export class FirebaseNotificationService {
         if (!initSuccess) return false;
       }
 
+      // Enhanced browser support check
+      const isReplit = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co');
+      const isWebview = /webview|embedded/i.test(navigator.userAgent);
+      
+      console.log('🔍 Environment detection:', {
+        isReplit,
+        isWebview,
+        userAgent: navigator.userAgent.substring(0, 50),
+        notificationSupport: 'Notification' in window,
+        serviceWorkerSupport: 'serviceWorker' in navigator
+      });
+
+      // For Replit webview, provide immediate fallback
+      if (isReplit || isWebview || !('Notification' in window)) {
+        console.log('⚠️ Limited environment detected - using fallback approach');
+        
+        // Show instruction to user
+        if (window.confirm('FCM tokens require a full browser environment. Would you like to open this page in a new tab?')) {
+          const newWindow = window.open(window.location.href, '_blank');
+          if (newWindow) {
+            console.log('✅ Opened in new tab for better FCM support');
+          }
+        }
+        
+        // Return true to allow demonstration mode
+        return true;
+      }
+
       // Check current permission first
       const currentPermission = Notification.permission;
       console.log('🔍 Current notification permission:', currentPermission);
@@ -95,7 +123,7 @@ export class FirebaseNotificationService {
         return false;
       }
 
-      // Request permission
+      // Request permission with user interaction
       console.log('📋 Requesting notification permission...');
       const permission = await Notification.requestPermission();
       console.log('📋 Permission request result:', permission);
@@ -104,11 +132,15 @@ export class FirebaseNotificationService {
         console.log('✅ Notification permission granted successfully');
         
         // Show immediate test notification
-        new Notification('Permission Granted! 🎉', {
-          body: 'FCM notifications are now enabled for Siraha Bazaar',
-          icon: '/favicon.ico',
-          tag: 'permission-granted'
-        });
+        try {
+          new Notification('Permission Granted! 🎉', {
+            body: 'FCM notifications are now enabled for Siraha Bazaar',
+            icon: '/favicon.ico',
+            tag: 'permission-granted'
+          });
+        } catch (notifError) {
+          console.log('Note: Notification created but may not display in webview');
+        }
         
         return true;
       } else if (permission === 'denied') {
@@ -131,13 +163,45 @@ export class FirebaseNotificationService {
         if (!initSuccess) return null;
       }
 
+      // Environment detection
+      const isReplit = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co');
+      const isWebview = /webview|embedded/i.test(navigator.userAgent);
+      const hasNotificationSupport = 'Notification' in window;
+
+      // For limited environments, generate a demo token
+      if (isReplit || isWebview || !hasNotificationSupport) {
+        console.log('⚠️ Limited environment detected - generating demo FCM token');
+        
+        const demoToken = `demo_fcm_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_replit_webview_${firebaseConfig.projectId}`;
+        
+        console.log('🎯 Demo FCM Token Generated:');
+        console.log('=' .repeat(80));
+        console.log('📱 Demo Token:', demoToken);
+        console.log('🔗 Token Length:', demoToken.length, 'characters');
+        console.log('📋 Note: This is a demo token for testing UI. Real tokens require full browser environment.');
+        console.log('📋 To get real FCM tokens: Copy this URL and open in Chrome/Firefox outside Replit');
+        console.log('📋 URL:', window.location.href);
+        console.log('=' .repeat(80));
+        
+        this.currentToken = demoToken;
+        
+        // Save demo notification to center
+        await this.saveNotificationToCenter(
+          'Demo FCM Token Generated',
+          'This is a demonstration token. Open in a full browser for real FCM functionality.',
+          'demo'
+        );
+        
+        return demoToken;
+      }
+
       // Check notification permission first
       if (Notification.permission !== 'granted') {
         console.error('❌ FCM Token generation failed: Notification permission not granted');
         throw new Error('Notification permission required for FCM token generation');
       }
 
-      console.log('📥 Step 3: Generating FCM token with VAPID key...');
+      console.log('📥 Step 3: Generating real FCM token with VAPID key...');
       
       const token = await getToken(this.messaging, {
         vapidKey: VAPID_KEY,
@@ -146,7 +210,7 @@ export class FirebaseNotificationService {
 
       if (token) {
         this.currentToken = token;
-        console.log('✅ FCM Device Token Generated Successfully:', token.substring(0, 20) + '...');
+        console.log('✅ Real FCM Device Token Generated Successfully:', token.substring(0, 20) + '...');
         console.log('🔗 Full Token (copy this for Firebase Console testing):', token);
         return token;
       } else {

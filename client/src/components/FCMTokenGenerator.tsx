@@ -24,7 +24,7 @@ export default function FCMTokenGenerator() {
     if ('Notification' in window) {
       const currentPermission = Notification.permission;
       setPermission(currentPermission);
-      
+
       if (currentPermission === 'denied') {
         setShowInstructions(true);
       }
@@ -41,11 +41,11 @@ export default function FCMTokenGenerator() {
 
   const requestPermissionAndGenerateToken = async () => {
     setIsLoading(true);
-    
+
     try {
       // First check current permission
       const currentPermission = Notification.permission;
-      
+
       if (currentPermission === 'denied') {
         toast({
           title: "Permission Blocked",
@@ -60,20 +60,33 @@ export default function FCMTokenGenerator() {
       // Try to request permission
       const granted = await FirebaseNotificationService.requestPermission();
       setPermission(Notification.permission);
-      
+
       if (!granted) {
-        toast({
-          title: "Permission Required",
-          description: "Notification permission is required to generate FCM tokens",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        // Check for webview environment
+        const isReplit = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co');
+        const isWebview = /webview|embedded/i.test(navigator.userAgent);
+
+        if ((isReplit || isWebview) && Notification.permission !== 'granted') {
+          toast({
+            title: "Webview Environment Detected",
+            description: "Generating demo token. For real FCM tokens, open in a full browser.",
+            variant: "default",
+          });
+          // Continue with demo token generation
+        } else if (Notification.permission !== 'granted') {
+          toast({
+            title: "Permission Required",
+            description: "Notification permission is required to generate FCM tokens",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Generate token
       const fcmToken = await FirebaseNotificationService.getDeviceToken();
-      
+
       if (fcmToken) {
         setToken(fcmToken);
         toast({
@@ -164,7 +177,7 @@ export default function FCMTokenGenerator() {
               {statusInfo.status}
             </Badge>
           </div>
-          
+
           {permission === 'denied' && (
             <Alert variant="destructive" className="mt-3">
               <AlertTriangle className="h-4 w-4" />
@@ -239,7 +252,7 @@ export default function FCMTokenGenerator() {
                   <li>Click "Generate FCM Token" again</li>
                 </ol>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Method 2: Incognito Mode</h4>
                 <ol className="list-decimal list-inside space-y-1 ml-2">

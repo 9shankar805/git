@@ -30,9 +30,31 @@ export default function FCMTokenDisplay() {
         console.warn('⚠️ Browser does not support notifications - trying in Chrome/Firefox/Edge');
         toast({
           title: "Browser Not Supported",
-          description: "Please open this in Chrome, Firefox, or Edge browser for FCM token generation",
+          description: "FCM requires a modern browser. Copy this URL and open in Chrome/Firefox/Edge outside of Replit's webview",
           variant: "destructive"
         });
+        
+        // Generate a test token for demonstration
+        const testToken = `test_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setFcmToken(testToken);
+        
+        // Save test notification to center
+        try {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: 49,
+              title: 'Test FCM Setup',
+              message: 'This is a test notification saved to your notification center.',
+              type: 'test',
+              isRead: false
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to save test notification:', error);
+        }
+        
         return;
       }
       

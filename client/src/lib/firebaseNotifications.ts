@@ -81,13 +81,41 @@ export class FirebaseNotificationService {
         if (!initSuccess) return false;
       }
 
+      // Check current permission first
+      const currentPermission = Notification.permission;
+      console.log('🔍 Current notification permission:', currentPermission);
+      
+      if (currentPermission === 'granted') {
+        console.log('✅ Notification permission already granted');
+        return true;
+      }
+      
+      if (currentPermission === 'denied') {
+        console.log('❌ Notification permission permanently denied');
+        return false;
+      }
+
+      // Request permission
+      console.log('📋 Requesting notification permission...');
       const permission = await Notification.requestPermission();
+      console.log('📋 Permission request result:', permission);
       
       if (permission === 'granted') {
-        console.log('✅ Notification permission granted');
+        console.log('✅ Notification permission granted successfully');
+        
+        // Show immediate test notification
+        new Notification('Permission Granted! 🎉', {
+          body: 'FCM notifications are now enabled for Siraha Bazaar',
+          icon: '/favicon.ico',
+          tag: 'permission-granted'
+        });
+        
         return true;
+      } else if (permission === 'denied') {
+        console.log('❌ Notification permission denied by user');
+        return false;
       } else {
-        console.log('❌ Notification permission denied');
+        console.log('⚠️ Notification permission default (not decided)');
         return false;
       }
     } catch (error) {

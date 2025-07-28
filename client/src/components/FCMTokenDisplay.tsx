@@ -19,27 +19,59 @@ export default function FCMTokenDisplay() {
     console.log('🎬 User clicked Generate FCM Token (YouTube tutorial style)...');
     
     try {
+      // Check browser support first
+      if (!('Notification' in window)) {
+        throw new Error('This browser does not support notifications');
+      }
+      
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('This browser does not support service workers');
+      }
+      
+      if (!('PushManager' in window)) {
+        throw new Error('This browser does not support push messaging');
+      }
+      
+      console.log('✅ Browser supports all required features');
+      
       // Step 1: Initialize Firebase
       console.log('📥 Step 1: Initializing Firebase Cloud Messaging...');
       await initializeFirebaseNotifications();
       
-      // Step 2: Request permission if needed
-      if (Notification.permission !== 'granted') {
+      // Step 2: Check current permission
+      const currentPermission = Notification.permission;
+      console.log('📥 Current permission status:', currentPermission);
+      
+      if (currentPermission === 'denied') {
+        toast({
+          title: "Permission Blocked",
+          description: "Notification permission was denied. Please reset permissions in browser settings and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Step 3: Request permission if needed
+      if (currentPermission !== 'granted') {
         console.log('📥 Step 2: Requesting notification permission...');
         const granted = await requestNotificationPermission();
         setPermission(Notification.permission);
         
-        if (!granted) {
+        console.log('📥 Permission result:', Notification.permission);
+        
+        if (!granted || Notification.permission !== 'granted') {
           toast({
             title: "Permission Required",
-            description: "Notification permission is needed to generate FCM token",
+            description: "Notification permission must be granted to generate FCM token",
             variant: "destructive"
           });
           return;
         }
+        
+        console.log('✅ Permission granted successfully!');
       }
       
-      // Step 3: Generate FCM Token
+      // Step 4: Generate FCM Token
       console.log('📥 Step 3: Generating FCM token...');
       const token = await getFirebaseToken();
       
@@ -54,18 +86,41 @@ export default function FCMTokenDisplay() {
         console.log('📋 Ready for testing with Firebase Console!');
         console.log('=' .repeat(80));
         
+        // Show immediate confirmation
         toast({
-          title: "FCM Token Generated!",
-          description: "Check console for full token. Token is now displayed below.",
+          title: "✅ FCM Token Generated Successfully!",
+          description: `Token generated (${token.length} chars). Check console for full token.`,
         });
+        
+        // Also show a browser notification to confirm it works
+        if (Notification.permission === 'granted') {
+          new Notification('FCM Token Generated! 🎉', {
+            body: 'Your FCM token is ready. Notifications are working!',
+            icon: '/favicon.ico',
+            tag: 'fcm-success'
+          });
+        }
       } else {
-        throw new Error('Token generation returned null');
+        throw new Error('Token generation returned null - possible Firebase configuration issue');
       }
     } catch (error) {
       console.error('❌ FCM Token generation failed:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Provide specific guidance based on error
+      if (errorMessage.includes('not support')) {
+        errorMessage += '. Try using Chrome, Firefox, or Edge browser.';
+      } else if (errorMessage.includes('denied')) {
+        errorMessage += '. Please enable notifications in browser settings.';
+      }
+      
       toast({
         title: "Token Generation Failed",
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -97,6 +152,15 @@ export default function FCMTokenDisplay() {
     console.log('🚀 Testing FCM push notification with token:', fcmToken.substring(0, 20) + '...');
 
     try {
+      // First show a local notification to confirm browser support
+      if (Notification.permission === 'granted') {
+        new Notification('Testing FCM... 🧪', {
+          body: 'Local notification works! Now testing server-side FCM...',
+          icon: '/favicon.ico',
+          tag: 'fcm-test-local'
+        });
+      }
+
       const response = await fetch('/api/test-fcm-notification', {
         method: 'POST',
         headers: {
@@ -115,9 +179,17 @@ export default function FCMTokenDisplay() {
       if (result.success) {
         console.log('✅ FCM test notification sent:', result);
         toast({
-          title: "Push Notification Sent!",
-          description: result.notificationSent ? "Check your browser/device for the notification" : "Server configured successfully",
+          title: "🎉 Push Notification Test Complete!",
+          description: "Check your browser/device for both local and FCM notifications",
         });
+        
+        // Log complete test results
+        console.log('=' .repeat(80));
+        console.log('🧪 FCM TEST RESULTS:');
+        console.log('✅ Local notification: Sent');
+        console.log('✅ FCM server notification:', result.notificationSent ? 'Sent' : 'Server only');
+        console.log('📱 Token used:', fcmToken.substring(0, 20) + '...');
+        console.log('=' .repeat(80));
       } else {
         throw new Error(result.error || 'Unknown error');
       }

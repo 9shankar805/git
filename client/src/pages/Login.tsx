@@ -39,20 +39,20 @@ export default function Login() {
     setIsLoading(true);
     try {
       await login(data.email, data.password);
-      
+
       // Play success sound for successful login
       playSound.success();
-      
+
       toast({
         title: "Welcome back!",
         description: "You have been successfully logged in.",
       });
-      
+
       setLocation("/");
     } catch (error) {
       // Play error sound for failed login
       playSound.error();
-      
+
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "Invalid credentials",
@@ -64,26 +64,81 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
     try {
-      await loginWithGoogle();
-      
-      // Play success sound for successful login
-      playSound.success();
-      
-      toast({
-        title: "Welcome!",
-        description: "You have been successfully logged in with Google.",
-      });
+      setIsLoading(true);
+
+      // Check if running in Android WebView
+      const isAndroid = (window as any).AndroidBridge?.isAndroidApp?.() || false;
+
+      if (isAndroid) {
+        console.log('🔐 Starting Google login in Android WebView...');
+        (window as any).AndroidBridge?.logMessage('Starting Google OAuth flow');
+      }
+
+      const userData = await loginWithGoogle();
+
+      // Handle redirect case (Android WebView)
+      if (!userData) {
+        console.log('🔄 Redirect initiated, waiting for result...');
+        return;
+      }
+
+      if (userData) {
+        console.log('✅ Google authentication successful, registering with backend...');
+
+        // Send user data to backend for registration/login
+        const response = await fetch('/api/auth/social-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firebaseUid: userData.uid,
+            email: userData.email,
+            fullName: userData.displayName,
+            photoUrl: userData.photoURL,
+            emailVerified: userData.emailVerified,
+            role: 'customer'
+          }),
+        });
+
+        if (response.ok) {
+          const { user } = await response.json();
+          setUser(user);
+
+          toast({
+            title: "Login Successful",
+            description: `Welcome back, ${user.fullName}!`,
+          });
+
+          // Show success in Android app
+          if (isAndroid) {
+            (window as any).AndroidBridge?.showToast(`Welcome ${user.fullName}!`);
+            (window as any).AndroidBridge?.logMessage(`User ${user.email} logged in successfully`);
+          }
+
+          // Redirect to home or intended page
+          setLocation('/');
+        } else {
+          throw new Error('Failed to authenticate with server');
+        }
+      }
     } catch (error) {
-      // Play error sound for failed login
-      playSound.error();
-      
+      console.error('🚫 Google login error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
       toast({
-        title: "Google login failed",
-        description: error instanceof Error ? error.message : "Google authentication failed",
+        title: "Login Failed",
+        description: `Could not sign in with Google: ${errorMessage}`,
         variant: "destructive",
       });
+
+      // Show error in Android app
+      if ((window as any).AndroidBridge?.isAndroidApp?.()) {
+        (window as any).AndroidBridge?.showToast('Google login failed. Please try again.');
+        (window as any).AndroidBridge?.logMessage(`Google login error: ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +255,7 @@ export default function Login() {
                   </span>
                 </div>
               </div>
-              
+
               <Button
                 type="button"
                 variant="outline"
@@ -239,7 +294,7 @@ export default function Login() {
                     Note: Firebase domain authorization may be required for email delivery.
                   </p>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground mb-3">Demo Accounts:</p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-center space-x-2 p-2 bg-muted rounded">

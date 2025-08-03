@@ -193,7 +193,20 @@ function App() {
     // Initialize Deep Linking Service
     deepLinkingService.initialize();
 
-    console.log('📱 App services initialized');
+    // Check for OAuth redirect result (important for Android WebView)
+    const checkOAuthRedirect = async () => {
+      try {
+        const { OAuthRedirectHandler } = await import('@/lib/oauthRedirectHandler');
+        await OAuthRedirectHandler.checkForRedirectResult();
+      } catch (error) {
+        console.log('No OAuth redirect to process:', error);
+      }
+    };
+    
+    // Check for redirect result after a short delay to ensure Firebase is initialized
+    setTimeout(checkOAuthRedirect, 1000);
+
+    console.log('📱 App services initialized with OAuth redirect support');
   }, []);
 
   // Initialize FCM when app loads (like in YouTube tutorials)

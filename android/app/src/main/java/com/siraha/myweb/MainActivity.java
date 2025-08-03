@@ -18,10 +18,123 @@ public class MainActivity extends BridgeActivity {
         // Handle deep link on app launch
         handleDeepLink(getIntent());
         
+        // Configure WebView for in-app OAuth
+        setupWebViewForOAuth();
+        
         // Register any additional plugins here if needed
         // this.init(savedInstanceState, new ArrayList<Class<? extends Plugin>>() {{
         //     add(YourPlugin.class);
         // }});
+    }
+    
+    private void setupWebViewForOAuth() {
+        // Configure WebView settings for OAuth
+        if (bridge != null && bridge.getWebView() != null) {
+            WebView webView = bridge.getWebView();
+            WebSettings webSettings = webView.getSettings();
+            
+            // Enable JavaScript and DOM storage for OAuth
+            webSettings.setJavaScriptEnabled(true);
+            webSettings.setDomStorageEnabled(true);
+            webSettings.setDatabaseEnabled(true);
+            webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+            
+            // Add JavaScript interface for Google Auth
+            webView.addJavascriptInterface(new AndroidBridge(this), "AndroidBridge");
+            
+            // Set custom WebViewClient to handle OAuth redirects
+            webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                    String url = request.getUrl().toString();
+                    Log.d(TAG, "WebView loading URL: " + url);
+                    
+                    // Handle Google OAuth URLs within WebView
+                    if (url.contains("accounts.google.com") || 
+                        url.contains("oauth2") || 
+                        url.contains("googleapis.com")) {
+                        // Load OAuth URLs in WebView instead of external browser
+                        view.loadUrl(url);
+                        return true;
+                    }
+                    
+                    // Handle deep links
+                    if (url.startsWith("siraha://") || 
+                        url.contains("sirahabazaar.com")) {
+                        handleDeepLink(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                        return true;
+                    }
+                    
+                    return false;
+                }
+                
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    super.onPageFinished(view, url);
+                    Log.d(TAG, "Page finished loading: " + url);
+                    
+                    // Inject deep linking handler
+                    String jsCode = "if (typeof window.handleDeepLink === 'undefined') {" +
+                        "window.handleDeepLink = function(path) {" +
+                        "console.log('Deep link received: ' + path);" +
+                        "if (window.deepLinkingService && window.deepLinkingService.handleDeepLink) {" +
+                        "window.deepLinkingService.handleDeepLink(window.location.origin + path, 'android');" +
+                        "} else {" +
+                        "window.location.href = path;" +
+                        "}" +
+                        "};" +
+                        "}";
+                    view.evaluateJavascript(jsCode, null);
+                }
+            });
+        }
+    }
+    
+    // Android Bridge class for JavaScript communication
+    public class AndroidBridge {
+        private Context context;
+        
+        public AndroidBridge(Context context) {
+            this.context = context;
+        }
+        
+        @JavascriptInterface
+        public void setFirebaseToken(String token) {
+            Log.d(TAG, "Firebase token received: " + token);
+            // Store token in shared preferences or send to server
+        }
+        
+        @JavascriptInterface
+        public String getFirebaseToken() {
+            // Return stored Firebase token
+            return "";
+        }
+        
+        @JavascriptInterface
+        public void showToast(String message) {
+            ((Activity) context).runOnUiThread(() -> {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+            });
+        }
+        
+        @JavascriptInterface
+        public boolean isAndroidApp() {
+            return true;
+        }
+        
+        @JavascriptInterface
+        public void logMessage(String message) {
+            Log.d(TAG, "Web log: " + message);
+        }
+        
+        @JavascriptInterface
+        public void shareContent(String url, String title, String text) {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_TEXT, url);
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, title);
+            context.startActivity(Intent.createChooser(shareIntent, "Share via"));
+        }
     }
     
     @Override

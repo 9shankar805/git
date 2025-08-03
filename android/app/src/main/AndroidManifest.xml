@@ -76,6 +76,26 @@
                       android:host="sirahabazaar.com"
                       android:pathPrefix="/track" />
             </intent-filter>
+            
+            <!-- OAuth Callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="sirahabazaar.com"
+                      android:pathPrefix="/__/auth/handler" />
+            </intent-filter>
+            
+            <!-- Firebase Auth Callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="myweb-1c1f37b3.firebaseapp.com"
+                      android:pathPrefix="/__/auth/handler" />
+            </intent-filter>
 
         </activity>
 

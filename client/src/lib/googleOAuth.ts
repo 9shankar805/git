@@ -26,7 +26,7 @@ export interface GoogleUserInfo {
 
 export class GoogleOAuthService {
   private static instance: GoogleOAuthService;
-  
+
   public static getInstance(): GoogleOAuthService {
     if (!GoogleOAuthService.instance) {
       GoogleOAuthService.instance = new GoogleOAuthService();
@@ -68,7 +68,7 @@ export class GoogleOAuthService {
     }
 
     const tokens = await tokenResponse.json();
-    
+
     // Get user info from Google
     const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${tokens.access_token}` }

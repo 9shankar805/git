@@ -114,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
         createNotificationChannel();
         setupFirebaseMessaging();
+        setupWebAppInterface();
+        setupOneSignalIntegration();
         setupWebView();
         registerNetworkReceiver();
 
@@ -281,8 +283,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void sendTokenToWeb(String token) {
         if (webView != null) {
-            webView.evaluateJavascript("if(window.updateFCMToken) { window.updateFCMToken('" + token + "'); }", null);
+            String javascript = "javascript:if(window.updateFCMToken) { window.updateFCMToken('" + token + "'); }";
+            webView.evaluateJavascript(javascript, null);
         }
+    }
+
+    private void setupOneSignalIntegration() {
+        // OneSignal will automatically generate a player ID for webview
+        // The webview will handle OneSignal initialization
+        Log.d("OneSignal", "OneSignal integration ready for webview");
     }
 
     private void createNotificationChannel() {
@@ -317,6 +326,9 @@ public class MainActivity extends AppCompatActivity {
         if (needPermission) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE);
         }
+    }
+
+    private void setupWebAppInterface() {
     }
 
     @Override

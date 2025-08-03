@@ -54,7 +54,7 @@ export const pool = new Pool({
   // Optimized reconnection settings for Neon
   keepAlive: true,
   keepAliveInitialDelayMillis: 3000,
-  
+
   // Stability options for production
   allowExitOnIdle: false, // Keep connections alive for Neon
   maxUses: 5000, // Higher for Neon

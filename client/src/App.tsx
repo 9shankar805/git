@@ -85,9 +85,10 @@ import ProtocolHandler from "@/pages/ProtocolHandler";
 import ShareTarget from "@/pages/ShareTarget";
 import PWAFeaturesShowcase from "@/pages/PWAFeaturesShowcase";
 import FCMTest from "@/pages/FCMTest";
-import FCMTestPage from "@/pages/FCMTestPage";
-import FCMDiagnosticPage from "@/pages/FCMDiagnosticPage";
-import FCMInstantPage from "@/pages/FCMInstantPage";
+import FCMTestPage from './pages/FCMTestPage';
+import FCMDiagnosticPage from './pages/FCMDiagnosticPage';
+import FCMInstantPage from './pages/FCMInstantPage';
+import OneSignalTestPage from './components/OneSignalTestPage';
 
 function AppRouter() {
   const { mode } = useAppMode();
@@ -142,6 +143,7 @@ function AppRouter() {
         <Route path="/file-handler" component={FileHandler} />
         <Route path="/protocol-handler" component={ProtocolHandler} />
         <Route path="/share-target" component={ShareTarget} />
+        <Route path="/onesignal-test" component={OneSignalTestPage} />
 
         {/* Seller Hub Routes */}
         <Route path="/seller/dashboard" component={SellerDashboard} />
@@ -202,7 +204,7 @@ function App() {
         console.log('No OAuth redirect to process:', error);
       }
     };
-    
+
     // Check for redirect result after a short delay to ensure Firebase is initialized
     setTimeout(checkOAuthRedirect, 1000);
 

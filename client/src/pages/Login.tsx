@@ -67,18 +67,34 @@ export default function Login() {
     try {
       setIsLoading(true);
 
-      // Check if running in Android WebView
+      // Check if running in Android WebView or Capacitor app
       const isAndroid = (window as any).AndroidBridge?.isAndroidApp?.() || false;
+      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
 
-      if (isAndroid) {
-        console.log('🔐 Starting Google login in Android WebView...');
-        (window as any).AndroidBridge?.logMessage('Starting Google OAuth flow');
+      if (isAndroid || isCapacitor) {
+        console.log('📱 Starting native Google login (WebView bypass)...');
+        (window as any).AndroidBridge?.logMessage('Starting native Google OAuth flow');
       }
 
-      const userData = await loginWithGoogle();
+      // Use SmartGoogleAuth - automatically chooses best method
+      const { SmartGoogleAuth } = await import('@/lib/nativeGoogleAuth');
+      const authResult = await SmartGoogleAuth.signIn();
 
-      // Handle redirect case (Android WebView)
-      if (!userData) {
+      // Handle different auth result formats
+      let userData;
+      if (authResult.user) {
+        // Native auth result
+        userData = {
+          uid: authResult.user.id,
+          email: authResult.user.email,
+          displayName: authResult.user.name,
+          photoURL: authResult.user.photoUrl,
+          emailVerified: true
+        };
+      } else if (authResult.uid) {
+        // Firebase auth result
+        userData = authResult;
+      } else {
         console.log('🔄 Redirect initiated, waiting for result...');
         return;
       }
@@ -106,6 +122,9 @@ export default function Login() {
           const { user } = await response.json();
           setUser(user);
 
+          // Play success sound
+          playSound.success();
+
           toast({
             title: "Login Successful",
             description: `Welcome back, ${user.fullName}!`,
@@ -127,6 +146,9 @@ export default function Login() {
       console.error('🚫 Google login error:', error);
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      // Play error sound
+      playSound.error();
 
       toast({
         title: "Login Failed",

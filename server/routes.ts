@@ -99,6 +99,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Products API
+  app.get("/api/products", async (req, res) => {
+    try {
+      const { category, search, store, limit = 50 } = req.query;
+      let products;
+
+      if (category) {
+        products = await storage.getProductsByCategory(parseInt(category as string));
+      } else if (search) {
+        products = await storage.searchProducts(search as string);
+      } else if (store) {
+        products = await storage.getProductsByStoreId(parseInt(store as string));
+      } else {
+        products = await storage.getAllProducts();
+      }
+
+      // Apply limit
+      const limitNum = parseInt(limit as string) || 50;
+      const limitedProducts = products.slice(0, limitNum);
+
+      res.json(limitedProducts);
+    } catch (error) {
+      console.error("Products API error:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Product API error:", error);
+      res.status(500).json({ error: "Failed to fetch product" });
+    }
+  });
+
+  // Stores API
+  app.get("/api/stores", async (req, res) => {
+    try {
+      const { owner, limit = 50 } = req.query;
+      let stores;
+
+      if (owner) {
+        stores = await storage.getStoresByOwnerId(parseInt(owner as string));
+      } else {
+        stores = await storage.getAllStores();
+      }
+
+      // Apply limit
+      const limitNum = parseInt(limit as string) || 50;
+      const limitedStores = stores.slice(0, limitNum);
+
+      res.json(limitedStores);
+    } catch (error) {
+      console.error("Stores API error:", error);
+      res.status(500).json({ error: "Failed to fetch stores" });
+    }
+  });
+
+  app.get("/api/stores/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const store = await storage.getStore(id);
+      if (!store) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      res.json(store);
+    } catch (error) {
+      console.error("Store API error:", error);
+      res.status(500).json({ error: "Failed to fetch store" });
+    }
+  });
+
+  // Categories API
+  app.get("/api/categories", async (req, res) => {
+    try {
+      const categories = await storage.getAllCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Categories API error:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  // Flash Sales API
+  app.get("/api/flash-sales/active", async (req, res) => {
+    try {
+      // For now, return empty array - can be enhanced later
+      res.json([]);
+    } catch (error) {
+      console.error("Flash sales API error:", error);
+      res.status(500).json({ error: "Failed to fetch flash sales" });
+    }
+  });
+
+  // Recommendations API
+  app.get("/api/recommendations/homepage", async (req, res) => {
+    try {
+      // Get featured products as recommendations
+      const products = await storage.getAllProducts();
+      const recommendations = products.slice(0, 10); // Top 10 products
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Recommendations API error:", error);
+      res.status(500).json({ error: "Failed to fetch recommendations" });
+    }
+  });
+
+  app.post("/api/recommendations/track", async (req, res) => {
+    try {
+      // Track user interactions (can be enhanced later)
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Recommendations tracking error:", error);
+      res.status(500).json({ error: "Failed to track recommendation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

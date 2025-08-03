@@ -29,11 +29,37 @@ export class AndroidBridge {
     if (this.isAndroid) {
       console.log('✅ Android WebView detected - Bridge initialized');
       this.logMessage('Android Bridge initialized successfully');
+      this.setupDeepLinkHandling();
     } else {
       console.log('🌐 Running in web browser - Android Bridge not available');
     }
     
     return this.isAndroid;
+  }
+
+  /**
+   * Setup deep link handling for Android WebView
+   */
+  private static setupDeepLinkHandling(): void {
+    // Make deep link handler available globally
+    (window as any).handleDeepLink = (deepLinkPath: string) => {
+      console.log('🔗 Android deep link received:', deepLinkPath);
+      
+      // Import deep linking service dynamically to avoid circular imports
+      import('./deepLinking').then(({ deepLinkingService }) => {
+        const fullUrl = window.location.origin + deepLinkPath;
+        deepLinkingService.handleDeepLink(fullUrl, 'android');
+      });
+    };
+
+    // Setup communication for sharing deep links back to Android
+    (window as any).shareDeepLink = (url: string, title?: string, text?: string) => {
+      if (window.AndroidBridge?.shareContent) {
+        window.AndroidBridge.shareContent(url, title || 'Check this out!', text || '');
+      } else {
+        console.log('🔗 Share deep link:', { url, title, text });
+      }
+    };
   }
 
   /**

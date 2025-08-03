@@ -22,6 +22,61 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep Link Intent Filters -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="sirahabazaar.com" />
+            </intent-filter>
+            
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="1eebc84c-4ca6-4adc-9f3a-cfd801569d11-00-1hrbthf85je3z.sisko.replit.dev" />
+            </intent-filter>
+            
+            <!-- Custom Scheme for Deep Links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="siraha" />
+            </intent-filter>
+            
+            <!-- Product Deep Links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="sirahabazaar.com"
+                      android:pathPrefix="/product" />
+            </intent-filter>
+            
+            <!-- Store Deep Links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="sirahabazaar.com"
+                      android:pathPrefix="/store" />
+            </intent-filter>
+            
+            <!-- Order Tracking Deep Links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="sirahabazaar.com"
+                      android:pathPrefix="/track" />
+            </intent-filter>
+
         </activity>
 
         <!-- Firebase Messaging Service -->

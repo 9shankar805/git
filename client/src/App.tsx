@@ -17,6 +17,7 @@ import MobileNotificationBar from "@/components/MobileNotificationBar";
 import { AndroidBridge } from "@/lib/androidBridge";
 import { useEffect } from "react";
 import { FirebaseNotificationService } from "@/lib/firebaseNotifications";
+import { deepLinkingService } from "@/lib/deepLinking";
 // Firebase Cloud Messaging is initialized automatically via firebaseNotifications.ts
 
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -183,20 +184,27 @@ function AppRouter() {
 
 function App() {
   // Initialize Android bridge on app startup
+
+  // Initialize Android Bridge and Deep Linking
   useEffect(() => {
+    // Initialize Android Bridge
     AndroidBridge.initialize();
-    console.log('React app mounted successfully');
+
+    // Initialize Deep Linking Service
+    deepLinkingService.initialize();
+
+    console.log('📱 App services initialized');
   }, []);
 
   // Initialize FCM when app loads (like in YouTube tutorials)
   useEffect(() => {
     const initializeFCMOnLoad = async () => {
       console.log('🎬 Starting FCM initialization (like YouTube tutorial)...');
-      
+
       try {
         // First initialize Firebase
         await FirebaseNotificationService.initialize();
-        
+
         // Check if notification permission is already granted
         if (Notification.permission === 'granted') {
           console.log('✅ Notification permission already granted - FCM ready!');

@@ -1,4 +1,3 @@
-
 import { Request, Response } from "express";
 
 // Social login endpoint for Google authentication

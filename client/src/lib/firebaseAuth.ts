@@ -68,6 +68,7 @@ export const signInWithGoogle = async () => {
   try {
     // First try popup method
     const result = await signInWithPopup(auth, googleProvider);
+    console.log('Google sign-in successful:', result.user);
     return result;
   } catch (error: any) {
     console.error('Popup method failed:', error);
@@ -80,6 +81,7 @@ export const signInWithGoogle = async () => {
       // Check if we're returning from a redirect
       const redirectResult = await getRedirectResult(auth);
       if (redirectResult) {
+        console.log('Google redirect sign-in successful:', redirectResult.user);
         return redirectResult;
       }
       

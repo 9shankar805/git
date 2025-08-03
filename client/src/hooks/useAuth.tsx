@@ -4,6 +4,7 @@ import type { User } from "@shared/schema";
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -150,6 +151,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const { signInWithGoogle } = await import('../lib/firebaseAuth');
+      const result = await signInWithGoogle();
+      
+      if (result && result.user) {
+        const firebaseUser = result.user;
+        
+        // Extract user data from Firebase
+        const userData = {
+          firebaseUid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          fullName: firebaseUser.displayName || '',
+          photoUrl: firebaseUser.photoURL || '',
+          phone: firebaseUser.phoneNumber || '',
+          role: 'customer', // Default role
+          address: '',
+          emailVerified: firebaseUser.emailVerified
+        };
+
+        console.log('Google user data:', userData);
+
+        // Send to backend to create/find user
+        const response = await fetch("/api/auth/social-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(userData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Google login failed");
+        }
+
+        const { user } = await response.json();
+        console.log('Backend user created/found:', user);
+        
+        setUser(user);
+        localStorage.setItem("user", JSON.stringify(user));
+        
+        // Redirect based on user role
+        if (user.role === 'delivery_partner') {
+          window.location.href = '/delivery-partner/dashboard';
+        } else if (user.role === 'shopkeeper') {
+          checkAndRedirectShopkeeper(user.id);
+        } else {
+          window.location.href = '/';
+        }
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -158,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refreshUser, isLoading }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, register, logout, refreshUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

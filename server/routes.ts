@@ -1,3 +1,122 @@
+
+import { Request, Response } from "express";
+
+// Social login endpoint for Google authentication
+app.post("/api/auth/social-login", async (req: Request, res: Response) => {
+  try {
+    const { firebaseUid, email, fullName, photoUrl, phone, role, address, emailVerified } = req.body;
+
+    if (!firebaseUid || !email) {
+      return res.status(400).json({ error: "Firebase UID and email are required" });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if user already exists by Firebase UID
+    let existingUserQuery = await pool.query(
+      "SELECT * FROM users WHERE firebase_uid = $1",
+      [firebaseUid]
+    );
+
+    let user;
+
+    if (existingUserQuery.rows.length > 0) {
+      // User exists, update their information
+      user = existingUserQuery.rows[0];
+      
+      // Update user information with latest from Google
+      await pool.query(
+        `UPDATE users SET 
+         full_name = $2, 
+         photo_url = $3, 
+         phone = COALESCE(NULLIF($4, ''), phone),
+         email_verified = $5,
+         updated_at = CURRENT_TIMESTAMP
+         WHERE firebase_uid = $1`,
+        [firebaseUid, fullName, photoUrl, phone, emailVerified]
+      );
+
+      // Get updated user
+      const updatedUserQuery = await pool.query(
+        "SELECT * FROM users WHERE firebase_uid = $1",
+        [firebaseUid]
+      );
+      user = updatedUserQuery.rows[0];
+
+    } else {
+      // Check if user exists by email (for migration from email-only accounts)
+      const emailUserQuery = await pool.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+
+      if (emailUserQuery.rows.length > 0) {
+        // Update existing email user with Firebase UID
+        await pool.query(
+          `UPDATE users SET 
+           firebase_uid = $2,
+           full_name = COALESCE(NULLIF($3, ''), full_name),
+           photo_url = $4,
+           phone = COALESCE(NULLIF($5, ''), phone),
+           email_verified = $6,
+           updated_at = CURRENT_TIMESTAMP
+           WHERE email = $1`,
+          [email, firebaseUid, fullName, photoUrl, phone, emailVerified]
+        );
+
+        const updatedUserQuery = await pool.query(
+          "SELECT * FROM users WHERE email = $1",
+          [email]
+        );
+        user = updatedUserQuery.rows[0];
+
+      } else {
+        // Create new user
+        const newUserQuery = await pool.query(
+          `INSERT INTO users (
+            firebase_uid, email, full_name, photo_url, phone, role, address, 
+            email_verified, status, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+          RETURNING *`,
+          [firebaseUid, email, fullName, photoUrl, phone, role, address, emailVerified]
+        );
+        user = newUserQuery.rows[0];
+      }
+    }
+
+    // Convert snake_case to camelCase for frontend
+    const formattedUser = {
+      id: user.id,
+      firebaseUid: user.firebase_uid,
+      email: user.email,
+      fullName: user.full_name,
+      phone: user.phone,
+      role: user.role,
+      address: user.address,
+      photoUrl: user.photo_url,
+      emailVerified: user.email_verified,
+      status: user.status,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+
+    console.log('Social login successful for user:', formattedUser.id, formattedUser.email);
+
+    res.json({ 
+      user: formattedUser,
+      message: "Social login successful" 
+    });
+
+  } catch (error) {
+    console.error("Social login error:", error);
+    res.status(500).json({ 
+      error: "Social login failed",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from 'ws';

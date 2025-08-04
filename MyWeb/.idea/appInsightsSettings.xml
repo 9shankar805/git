@@ -20,6 +20,14 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
+              <option name="connection">
+                <ConnectionSetting>
+                  <option name="appId" value="com.siraha.myweb" />
+                  <option name="mobileSdkAppId" value="1:774950702828:android:19c9900fc2ece3774a9fc9" />
+                  <option name="projectId" value="myweb-1c1f37b3" />
+                  <option name="projectNumber" value="774950702828" />
+                </ConnectionSetting>
+              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />
